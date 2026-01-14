@@ -3,7 +3,25 @@ export type Difficulty = 'easy' | 'normal' | 'hard' | 'heroic';
 export type BattlePhase = 'intro' | 'player-turn' | 'spell-cast' | 'guardian-turn' | 'round-end' | 'victory' | 'defeat';
 export type AppState = 'world-map' | 'battle' | 'character-sheet' | 'quest-log';
 
-// Redefined to represent the raw data structure from the Gemini API (without taskId)
+export interface LootItem {
+  id: string;
+  name: string;
+  type: 'consumable' | 'equipment' | 'material' | 'gold';
+  rarity: 'common' | 'rare' | 'epic' | 'legendary';
+  icon: string;
+  description: string;
+  amount?: number;
+}
+
+export interface BattleRewards {
+  xp: number;
+  crystals: number;
+  perfectBonus: boolean;
+  streakBonus: number;
+  loot?: LootItem[];
+}
+
+// Redefined to represent the raw data structure from the Gemini API
 export interface DigraphQuestion {
   word: string;
   displayWord: string;
@@ -12,7 +30,6 @@ export interface DigraphQuestion {
   meaning: string;
 }
 
-// PhonicsTask represents the question with an assigned unique taskId for the game state
 export interface PhonicsTask extends DigraphQuestion {
   taskId: string;
 }
@@ -57,7 +74,6 @@ export interface Powerups {
 export interface BattleState {
   battleId: string;
   guardian: Guardian;
-  // Added difficulty property to BattleState to fix the type mismatch in BattleEngine.startBattle
   difficulty: Difficulty;
   phase: BattlePhase;
   currentRound: number;

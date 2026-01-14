@@ -3,12 +3,32 @@ export const INITIAL_HP = 100;
 export const DAMAGE_PER_HIT = 20;
 export const STREAK_BONUS_THRESHOLD = 3;
 
+export const WORLD_LORE = {
+  kingdomName: "The Phonics Kingdom",
+  theGreatSilence: "A mysterious celestial event caused by 'The Muted One'—a shadow that fed on the Kingdom's resonance. When the First Syllable was stolen, language physically crumbled into dust.",
+  theGuardians: "Once the 'Five High Cantors' of the Academy, they were corrupted when they tried to hold onto the echoes of the stolen Syllable. They now exist as barriers of static and fog."
+};
+
 export const HERO_LORE = {
   name: "Caelum",
   title: "The Word Weaver",
-  backstory: "Born in the echoing valleys of the Vowel Vortex before the shadow fell, Caelum was the youngest apprentice at the Great Academy of Echoes. When the Silent King issued his tragic decree, the world’s music vanished. Caelum escaped with the Lumina Quill—a legendary artifact that can stitch broken letters back into powerful spells. Driven by the hope of hearing their parents' voices once more, Caelum journeys to the heart of the shadow to rewrite the Kingdom's fate.",
-  origin: "Vowel Valley",
-  motivation: "To restore the Grand Harmony and free the trapped voices of the Royal Keep."
+  origin: "The Whispering Grove, Vowel Valley",
+  motivation: "To retrieve the 'Echo of the First Syllable' and 'Unspeak' the curse bound to their mentors.",
+  chronicles: [
+    {
+      title: "The Child of Resonance",
+      content: "Caelum was born with 'The Sight'—the ability to see words as physical vibrations of light. In the Whispering Grove, they practiced by catching drifting vowels and weaving them into songs that could make the very ground bloom."
+    },
+    {
+      title: "The Stolen Syllable",
+      content: "During the Festival of Clarity, 'The Muted One' descended. In a single heartbeat, every voice in the Kingdom vanished. Caelum's parents, the Royal Lexicographers, were turned to crystalline statues mid-sentence. Only Caelum escaped, clutching the Lumina Quill."
+    },
+    {
+      title: "The Weaver's Vow",
+      content: "Every Guardian Caelum faces is a piece of their past. The Mumbler was their first phonics teacher; the Vowel Vortex was their singing coach. Caelum battles not to destroy, but to remind them of the music they once shared. They will not rest until the Kingdom sings again."
+    }
+  ],
+  backstory: "The last apprentice of the Academy of Echoes, Caelum journeys to restore the Grand Harmony by reclaiming the stolen fragments of language."
 };
 
 export const CHAPTERS = [
@@ -21,9 +41,9 @@ export const CHAPTERS = [
     guardian: {
       id: 'g1',
       name: 'The Mumbler',
-      title: 'Voice of Fog',
+      title: 'Herald of Fog',
       island: 'Consonant Cove',
-      description: 'A fuzzy creature that scrambles sounds into nonsense.',
+      description: 'A fuzzy creature that was once the Guardian of Clarity, now lost in a haze of static.',
       baseHealth: 100,
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKxVGCVcC2qbSqUopQLgfG1arggAJXfVOyQ5e3QTKwGtLK9V3IU0mmJp2bGgfS10ZgJ8lpZXXx-L6G8Ivv_SRUOxW0deIitchydlHjBJ1Wzr6s80GkuDQ4ZxSW8tgKoeVOkciNLQQtB4okkl3L3Csl0Wd4grWwYxG8QirCL3_MsXpu_Upy3cKLrkYSrn9uHQHeI2B2pPBF_ndFWIOmxpI5RdRIPeOMaXiIBfPQEkMn6aSX8zRSjfXGU5hotXx3zDK3omSTyU-CMw',
       weakness: 'Clear Sounds',

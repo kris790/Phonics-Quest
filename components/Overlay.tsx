@@ -1,45 +1,26 @@
 
 import React from 'react';
-import { GameState } from '../types';
+import { GameState, RootState } from '../types';
 
 interface OverlayProps {
   gameState: GameState;
+  rootState: RootState;
   onSelect: (option: string) => void;
+  onBattleEnd: (victory: boolean, rewards?: any) => void;
+  onPronounce: () => void;
+  onVoiceStart?: () => void;
+  isListening?: boolean;
 }
 
-const Overlay: React.FC<OverlayProps> = ({ gameState, onSelect }) => {
-  if (gameState.status === 'victory') {
-    return (
-      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
-        <div className="text-center space-y-6">
-          <h2 className="text-5xl font-bold text-primary animate-pulse">VICTORY!</h2>
-          <p className="text-white/80">The shadow has been purged! You are a Digraph Master.</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full bg-primary text-background-dark font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(13,223,242,0.5)] active:scale-95 transition-transform"
-          >
-            PLAY AGAIN
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  if (gameState.status === 'defeat') {
-    return (
-      <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl p-8">
-        <div className="text-center space-y-6">
-          <h2 className="text-5xl font-bold text-damage-red">DEFEATED</h2>
-          <p className="text-white/80">The darkness was too strong. Keep practicing!</p>
-          <button 
-            onClick={() => window.location.reload()}
-            className="w-full bg-damage-red text-white font-bold py-4 rounded-xl shadow-[0_0_20px_rgba(250,92,56,0.5)] active:scale-95 transition-transform"
-          >
-            RETRY JOURNEY
-          </button>
-        </div>
-      </div>
-    );
+const Overlay: React.FC<OverlayProps> = ({ 
+  gameState, 
+  onSelect, 
+  onPronounce,
+  onVoiceStart,
+  isListening 
+}) => {
+  if (gameState.status === 'victory' || gameState.status === 'defeat') {
+    return null;
   }
 
   return (
@@ -47,9 +28,27 @@ const Overlay: React.FC<OverlayProps> = ({ gameState, onSelect }) => {
       {/* Current Question */}
       {gameState.currentQuestion && (
         <div className="bg-background-dark/80 backdrop-blur-lg rounded-2xl p-6 border border-white/10 shadow-2xl space-y-4">
-          <div className="text-center">
-            <h3 className="text-sm font-bold text-primary/60 uppercase tracking-widest mb-1">Identify the Digraph</h3>
-            <p className="text-4xl font-bold tracking-widest text-white mb-2">
+          <div className="text-center relative">
+            <div className="absolute right-0 top-0 flex gap-3">
+              <button 
+                onClick={onPronounce}
+                className="text-primary/60 hover:text-primary transition-colors"
+                title="Hear Word"
+              >
+                <span className="material-symbols-outlined">volume_up</span>
+              </button>
+              {onVoiceStart && (
+                <button 
+                  onClick={onVoiceStart}
+                  className={`transition-colors ${isListening ? 'text-damage-red animate-pulse' : 'text-primary/60 hover:text-primary'}`}
+                  title="Speak Answer"
+                >
+                  <span className="material-symbols-outlined">{isListening ? 'mic' : 'mic_none'}</span>
+                </button>
+              )}
+            </div>
+            <h3 className="text-[10px] font-black text-primary/60 uppercase tracking-[0.3em] mb-1">Spell Configuration</h3>
+            <p className="text-4xl font-black tracking-[0.2em] text-white mb-2 italic">
               {gameState.currentQuestion.displayWord.toUpperCase()}
             </p>
             <p className="text-white/50 text-xs italic">"{gameState.currentQuestion.meaning}"</p>
@@ -61,7 +60,7 @@ const Overlay: React.FC<OverlayProps> = ({ gameState, onSelect }) => {
                 key={i}
                 disabled={gameState.status !== 'playing'}
                 onClick={() => onSelect(opt)}
-                className="bg-white/5 border border-white/10 py-4 rounded-xl font-bold text-xl hover:bg-primary/20 hover:border-primary/50 transition-all active:scale-95 disabled:opacity-50"
+                className="bg-white/5 border border-white/10 py-4 rounded-xl font-black text-xl hover:bg-primary/20 hover:border-primary/50 transition-all active:scale-95 disabled:opacity-50 text-white italic tracking-widest"
               >
                 {opt}
               </button>
@@ -71,10 +70,21 @@ const Overlay: React.FC<OverlayProps> = ({ gameState, onSelect }) => {
       )}
 
       {/* Narrative Box */}
-      <div className="bg-background-dark/60 backdrop-blur-md rounded-2xl p-4 border border-white/5">
-        <p className="text-white/80 text-center text-sm font-medium leading-relaxed italic">
-            {gameState.feedback}
-        </p>
+      <div className="bg-background-dark/60 backdrop-blur-md rounded-2xl p-4 border border-white/5 min-h-[64px] flex items-center justify-center">
+        {isListening ? (
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex gap-1">
+              <div className="w-1 h-4 bg-primary animate-[bounce_0.5s_infinite_0s]"></div>
+              <div className="w-1 h-6 bg-primary animate-[bounce_0.5s_infinite_0.1s]"></div>
+              <div className="w-1 h-4 bg-primary animate-[bounce_0.5s_infinite_0.2s]"></div>
+            </div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary">Listening for the echo...</p>
+          </div>
+        ) : (
+          <p className="text-white/80 text-center text-sm font-medium leading-relaxed italic min-h-[40px] flex items-center justify-center">
+              {gameState.feedback}
+          </p>
+        )}
       </div>
     </div>
   );

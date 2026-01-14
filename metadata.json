@@ -1,5 +1,7 @@
 {
   "name": "Phonics Quest: Crystal Chronicles",
   "description": "An AI-powered educational RPG where phonics mastery is your combat system. Battle legendary guardians to restore the kingdom's voice through literacy.",
-  "requestFramePermissions": []
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

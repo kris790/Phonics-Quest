@@ -1,14 +1,10 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { DigraphQuestion } from "../types";
-import { FALLBACK_QUESTIONS } from "../constants";
+import { DigraphQuestion } from "./types";
+import { FALLBACK_QUESTIONS } from "./constants";
 
-// Correctly initialize GoogleGenAI using a named parameter and process.env.API_KEY
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-/**
- * Fetches digraph word puzzles from Gemini API based on the player's level.
- */
 export const fetchQuestions = async (level: number): Promise<DigraphQuestion[]> => {
   try {
     const response = await ai.models.generateContent({
@@ -36,7 +32,6 @@ export const fetchQuestions = async (level: number): Promise<DigraphQuestion[]> 
       }
     });
 
-    // Use .text property to get response string
     const data = JSON.parse(response.text || "[]");
     return data.length > 0 ? data : FALLBACK_QUESTIONS;
   } catch (error) {
@@ -45,16 +40,12 @@ export const fetchQuestions = async (level: number): Promise<DigraphQuestion[]> 
   }
 };
 
-/**
- * Generates encouraging battle narration based on correctness and streak using Gemini 3 Flash.
- */
 export const getNarrativeFeedback = async (isCorrect: boolean, word: string, streak: number): Promise<string> => {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
             contents: `Write a very short (max 12 words) encouraging battle narration for a child playing a digraph learning game. The child just got a word ${isCorrect ? 'RIGHT' : 'WRONG'} for the word "${word}". Current streak is ${streak}. Make it sound epic and crystal-cave themed.`,
         });
-        // Use .text property as per guidelines
         return response.text || (isCorrect ? "Crystal power surges!" : "The shadow thickens...");
     } catch (error) {
         return isCorrect ? "Excellent hit!" : "Watch out for the shadow!";
@@ -62,8 +53,8 @@ export const getNarrativeFeedback = async (isCorrect: boolean, word: string, str
 };
 
 /**
- * Generates audio for a given text using Gemini 2.5 Flash TTS model.
- * Returns raw PCM data as a base64 string.
+ * Generates audio for a given text using Gemini TTS.
+ * Returns raw PCM data as base64.
  */
 export const generateSpeech = async (text: string, voice: string = 'Kore'): Promise<string | undefined> => {
   try {
