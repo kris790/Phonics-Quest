@@ -6,6 +6,7 @@ import Overlay from './components/Overlay';
 import CharacterSheet from './components/CharacterSheet';
 import VictoryScreen from './components/battle/VictoryScreen';
 import DefeatScreen from './components/battle/DefeatScreen';
+import GuardianIntro from './components/battle/GuardianIntro';
 import { RootState, BattleState, AnimationState, PhonicsTask, AppState, Chapter } from './types';
 import { BattleEngine } from './battleEngine';
 import { fetchQuestions, getNarrativeFeedback, generateSpeech } from './services/geminiService';
@@ -22,7 +23,8 @@ type Action =
   | { type: 'SET_VIEW'; view: AppState }
   | { type: 'ADD_XP'; amount: number }
   | { type: 'ADD_CRYSTALS'; amount: number }
-  | { type: 'COMPLETE_CHAPTER'; chapterId: string };
+  | { type: 'COMPLETE_CHAPTER'; chapterId: string }
+  | { type: 'UPGRADE_ATTRIBUTE'; attribute: keyof RootState['progression']['attributes']; cost: number };
 
 const initialState: RootState = {
   view: 'world-map',
@@ -31,7 +33,7 @@ const initialState: RootState = {
     level: 1, 
     xp: 0, 
     maxXp: 100, 
-    crystalsFound: 0,
+    crystalsFound: 15, // Start with a few for demo
     unlockedChapters: ['ch1'],
     attributes: {
       readingPower: 5,
@@ -96,6 +98,18 @@ function rootReducer(state: RootState, action: Action): RootState {
       }
       return { ...state, chapters: newChapters };
     }
+    case 'UPGRADE_ATTRIBUTE':
+      return {
+        ...state,
+        progression: {
+          ...state.progression,
+          crystalsFound: state.progression.crystalsFound - action.cost,
+          attributes: {
+            ...state.progression.attributes,
+            [action.attribute]: state.progression.attributes[action.attribute] + 1
+          }
+        }
+      };
     default:
       return state;
   }
@@ -154,7 +168,8 @@ const App: React.FC = () => {
     const { nextState } = BattleEngine.processTurn(
       state.battle, 
       isCorrect, 
-      state.progression.attributes.readingPower
+      state.progression.attributes.readingPower,
+      state.progression.attributes.speed
     );
     
     if (isCorrect) {
@@ -271,7 +286,7 @@ const App: React.FC = () => {
         ...q
       }));
       dispatch({ type: 'INIT_BATTLE', tasks: formattedTasks, chapter });
-      dispatch({ type: 'SET_PHASE', phase: 'player-turn' });
+      dispatch({ type: 'SET_PHASE', phase: 'intro' });
     } catch (e) {
       console.error(e);
     } finally {
@@ -317,12 +332,20 @@ const App: React.FC = () => {
           <>
             <Arena gameState={mappedGameState} animationState={animationState} />
             
+            {state.battle.phase === 'intro' && (
+              <GuardianIntro 
+                guardian={currentChapter.guardian} 
+                onEngage={() => dispatch({ type: 'SET_PHASE', phase: 'player-turn' })} 
+              />
+            )}
+
             {state.battle.phase === 'victory' && (
               <VictoryScreen 
                 guardianName={currentChapter.guardian.name} 
                 rewards={calculateBattleRewards(state.battle)}
                 progression={state.progression}
                 onComplete={() => handleBattleEnd(true, calculateBattleRewards(state.battle))}
+                onReplay={() => startChapter(currentChapter)}
               />
             )}
 
@@ -337,7 +360,7 @@ const App: React.FC = () => {
               />
             )}
 
-            {state.battle.phase !== 'victory' && state.battle.phase !== 'defeat' && (
+            {state.battle.phase !== 'victory' && state.battle.phase !== 'defeat' && state.battle.phase !== 'intro' && (
               <>
                 <div className="absolute top-48 left-1/2 -translate-x-1/2 z-20 pointer-events-none opacity-40">
                    <span className="text-[10px] font-black tracking-[0.5em] text-primary uppercase bg-black/40 px-3 py-1 rounded-full border border-primary/20 italic">
@@ -358,7 +381,12 @@ const App: React.FC = () => {
           </>
         )}
 
-        {state.view === 'character-sheet' && <CharacterSheet progression={state.progression} />}
+        {state.view === 'character-sheet' && (
+          <CharacterSheet 
+            progression={state.progression} 
+            onUpgrade={(attr, cost) => dispatch({ type: 'UPGRADE_ATTRIBUTE', attribute: attr, cost })}
+          />
+        )}
       </div>
 
       <div className="relative z-50 h-16 bg-background-dark/95 border-t border-white/5 flex items-center justify-around px-8">

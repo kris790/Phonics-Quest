@@ -5,9 +5,12 @@ import { HERO_LORE, ASSETS, WORLD_LORE } from '../constants';
 
 interface CharacterSheetProps {
   progression: ProgressionState;
+  onUpgrade?: (attribute: keyof ProgressionState['attributes'], cost: number) => void;
 }
 
-const CharacterSheet: React.FC<CharacterSheetProps> = ({ progression }) => {
+const CharacterSheet: React.FC<CharacterSheetProps> = ({ progression, onUpgrade }) => {
+  const getUpgradeCost = (val: number) => Math.floor(val * 2.5);
+
   return (
     <div className="absolute inset-0 z-40 bg-background-dark p-6 overflow-y-auto pb-32">
       {/* Header with Stats Summary */}
@@ -33,14 +36,37 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ progression }) => {
           </div>
         </div>
 
-        {/* Attribute Cards */}
-        <div className="grid grid-cols-4 gap-2">
-          {Object.entries(progression.attributes).map(([key, val]) => (
-            <div key={key} className="bg-white/5 border border-white/10 rounded-lg p-2 flex flex-col items-center">
-              <span className="text-[8px] text-white/40 uppercase font-black tracking-tighter mb-1">{key}</span>
-              <span className="text-lg font-bold text-white leading-none">{val}</span>
-            </div>
-          ))}
+        {/* Attribute Cards with Upgrades */}
+        <div className="grid grid-cols-2 gap-3">
+          {Object.entries(progression.attributes).map(([key, val]) => {
+            const attrKey = key as keyof ProgressionState['attributes'];
+            const cost = getUpgradeCost(val);
+            const canAfford = progression.crystalsFound >= cost;
+
+            return (
+              <div key={key} className="bg-white/5 border border-white/10 rounded-xl p-3 flex flex-col gap-2 relative overflow-hidden group">
+                <div className="flex justify-between items-start">
+                  <span className="text-[8px] text-white/40 uppercase font-black tracking-[0.2em]">{key}</span>
+                  <span className="text-xl font-bold text-white leading-none">{val}</span>
+                </div>
+                <button 
+                  onClick={() => canAfford && onUpgrade?.(attrKey, cost)}
+                  disabled={!canAfford}
+                  className={`w-full py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1 border ${
+                    canAfford 
+                    ? 'bg-primary/10 border-primary/40 text-primary hover:bg-primary hover:text-background-dark' 
+                    : 'bg-white/5 border-white/5 text-white/20'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-sm">upgrade</span>
+                  <span>Ascend ({cost})</span>
+                </button>
+                {canAfford && (
+                   <div className="absolute top-0 right-0 w-8 h-8 bg-primary/5 rounded-full blur-xl animate-pulse"></div>
+                )}
+              </div>
+            );
+          })}
         </div>
       </header>
 
@@ -59,49 +85,9 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ progression }) => {
             Welcome to <span className="text-primary font-bold">{WORLD_LORE.kingdomName}</span>. 
             Once a symphony of spoken word, it has been choked by <span className="text-white font-bold italic">The Great Silence</span>.
           </p>
-          <div className="mt-4 flex gap-4 text-[10px] text-white/40 font-bold italic border-t border-white/10 pt-4">
-             <div className="flex flex-col">
-                <span className="text-white/60">Origin</span>
-                <span>{HERO_LORE.origin}</span>
-             </div>
-             <div className="flex flex-col">
-                <span className="text-white/60">Quest Objective</span>
-                <span>{HERO_LORE.motivation}</span>
-             </div>
-          </div>
         </div>
 
-        {/* Hero's Chronicles (The Big Story) */}
-        <div className="space-y-6">
-          <h2 className="text-white/40 font-black text-[10px] uppercase tracking-[0.5em] mb-4 text-center">Hero's Chronicles</h2>
-          
-          {HERO_LORE.chronicles.map((chapter, idx) => (
-            <div key={idx} className="relative group">
-                {/* Vertical Timeline Line */}
-                {idx !== HERO_LORE.chronicles.length - 1 && (
-                    <div className="absolute top-8 left-4 w-[1px] h-full bg-gradient-to-b from-primary/40 to-transparent"></div>
-                )}
-                
-                <div className="flex gap-4">
-                    <div className="relative z-10 w-8 h-8 rounded-full bg-background-dark border border-primary/30 flex items-center justify-center shrink-0">
-                        <span className="text-[10px] font-bold text-primary italic">0{idx + 1}</span>
-                    </div>
-                    <div className="flex-1 pb-4">
-                        <h3 className="text-white font-black italic tracking-tight mb-2 group-hover:text-primary transition-colors">
-                            {chapter.title}
-                        </h3>
-                        <div className="bg-white/5 border border-white/5 rounded-xl p-4">
-                            <p className="text-xs text-white/60 leading-relaxed italic">
-                                "{chapter.content}"
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Currency/Asset Summary */}
+        {/* Asset Summary */}
         <div className="bg-background-dark border border-white/10 rounded-2xl p-5 flex items-center justify-between">
            <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-lg bg-amber-400/10 flex items-center justify-center border border-amber-400/20">
@@ -115,6 +101,24 @@ const CharacterSheet: React.FC<CharacterSheetProps> = ({ progression }) => {
            <button className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg text-[10px] font-black text-white/60 transition-colors uppercase tracking-widest border border-white/5">
               Inventory
            </button>
+        </div>
+
+        {/* Chronicles */}
+        <div className="space-y-6">
+          <h2 className="text-white/40 font-black text-[10px] uppercase tracking-[0.5em] mb-4 text-center">Hero's Chronicles</h2>
+          {HERO_LORE.chronicles.map((chapter, idx) => (
+            <div key={idx} className="relative group flex gap-4">
+                <div className="relative z-10 w-8 h-8 rounded-full bg-background-dark border border-primary/30 flex items-center justify-center shrink-0">
+                    <span className="text-[10px] font-bold text-primary italic">0{idx + 1}</span>
+                </div>
+                <div className="flex-1 pb-4">
+                    <h3 className="text-white font-black italic tracking-tight mb-2 group-hover:text-primary transition-colors">{chapter.title}</h3>
+                    <div className="bg-white/5 border border-white/5 rounded-xl p-4">
+                        <p className="text-xs text-white/60 leading-relaxed italic">"{chapter.content}"</p>
+                    </div>
+                </div>
+            </div>
+          ))}
         </div>
       </section>
     </div>

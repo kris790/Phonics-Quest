@@ -36,7 +36,7 @@ export class BattleEngine {
       perfectRounds: 0,
       isComplete: false,
       victory: null,
-      feedback: `${guardian.name} emerges! ${guardian.description}`,
+      feedback: `${guardian.name} emerges from the silence!`,
     };
   }
 
@@ -46,18 +46,23 @@ export class BattleEngine {
   static processTurn(
     state: BattleState,
     isCorrect: boolean,
-    readingPower: number = 0,
+    readingPower: number = 5,
+    speed: number = 5,
     timeTaken: number = 2000
   ): { nextState: BattleState; result: TaskResult } {
     const task = state.tasks[state.currentTaskIndex];
     const newStreak = isCorrect ? state.comboStreak + 1 : 0;
-    const isCrit = isCorrect && newStreak >= STREAK_BONUS_THRESHOLD;
     
-    // Calculate damage with RPG scaling (Reading Power attribute)
+    // Critical hit chance scales with the Speed attribute
+    const critChance = (speed * 2) + (newStreak * 5); // Base speed bonus + streak bonus
+    const rolledCrit = isCorrect && (Math.random() * 100 < critChance);
+    const isCrit = rolledCrit || (isCorrect && newStreak >= STREAK_BONUS_THRESHOLD);
+    
+    // Calculate damage scaling: (Base + ReadingPower * 2) * Multiplier
     let damage = 0;
     if (isCorrect) {
-      const baseDmg = isCrit ? DAMAGE_PER_HIT * 2 : DAMAGE_PER_HIT;
-      damage = baseDmg + (readingPower * 2);
+      const multiplier = isCrit ? 2.5 : 1.0;
+      damage = Math.floor((DAMAGE_PER_HIT + (readingPower * 1.5)) * multiplier);
     }
 
     const result: TaskResult = {
@@ -85,17 +90,17 @@ export class BattleEngine {
   }
 
   /**
-   * Guardian counter-attack logic based on Guardian's difficulty
+   * Guardian counter-attack logic factored by Resilience
    */
-  static processGuardianTurn(state: BattleState, resilience: number = 0): BattleState {
+  static processGuardianTurn(state: BattleState, resilience: number = 5): BattleState {
     const lastResult = state.taskResults[state.taskResults.length - 1];
     let damageTaken = 0;
     
     if (!lastResult.isCorrect) {
-      // Base damage scales slightly with guardian level/max health
-      const baseGuardianDmg = 10 + Math.floor(state.guardianMaxHealth / 50);
-      // Resilience stat reduces incoming damage
-      damageTaken = Math.max(5, baseGuardianDmg - resilience);
+      const baseGuardianDmg = 15 + Math.floor(state.guardianMaxHealth / 40);
+      // Resilience stat reduces incoming damage by a percentage (cap at 60%)
+      const mitigation = Math.min(60, resilience * 2); 
+      damageTaken = Math.floor(baseGuardianDmg * (1 - mitigation / 100));
     }
 
     return {
@@ -123,7 +128,7 @@ export class BattleEngine {
     }
 
     if (allTasksDone) {
-      const victory = state.guardianHealth < state.guardianMaxHealth / 2; // Victory if guardian heavily damaged
+      const victory = state.guardianHealth < (state.guardianMaxHealth * 0.4); 
       return { ...state, isComplete: true, victory, phase: victory ? 'victory' : 'defeat' };
     }
 
