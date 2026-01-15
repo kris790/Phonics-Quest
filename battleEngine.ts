@@ -4,11 +4,13 @@ import { DAMAGE_PER_HIT, STREAK_BONUS_THRESHOLD } from './constants';
 
 export class BattleEngine {
   private static readonly BASE_PLAYER_HEALTH = 100;
-  private static readonly CRITICAL_CHANCE_BASE = 0.05;
+  private static readonly CRITICAL_CHANCE_BASE = 0.04; // Slightly reduced base
+  private static readonly CRITICAL_CHANCE_PER_FOCUS = 0.01; // Controlled scaling
   private static readonly CRITICAL_MULTIPLIER = 1.8;
   private static readonly COMBO_MULTIPLIER_PER_STREAK = 0.25;
-  private static readonly MAX_COMBO_MULTIPLIER = 3.0;
+  private static readonly MAX_COMBO_MULTIPLIER = 2.5; // Rebalanced from 3.0
   private static readonly RESILIENCE_DAMAGE_REDUCTION = 0.03;
+  private static readonly RESILIENCE_REDUCTION_CAP = 0.75; // Prevent invincibility
 
   static startBattle(tasks: PhonicsTask[], guardian: Guardian, playerLevel: number = 1, unlockedNPCs: string[] = []): BattleState {
     const scaledGuardianHealth = this.calculateGuardianHealth(guardian, playerLevel);
@@ -37,7 +39,7 @@ export class BattleEngine {
       availablePowerups: {
         hint: 2 + Math.floor(playerLevel / 3),
         shield: 1 + Math.floor(playerLevel / 5),
-        timeFreeze: Math.floor(playerLevel / 4),
+        timeFreeze: 1 + Math.floor(playerLevel / 4), // Always start with at least 1
         heal: 2 + Math.floor(playerLevel / 6),
       },
       totalDamageDealt: 0,
@@ -139,7 +141,7 @@ export class BattleEngine {
     }
 
     let damage = DAMAGE_PER_HIT + attributes.readingPower;
-    const criticalChance = this.CRITICAL_CHANCE_BASE + (attributes.focus * 0.015);
+    const criticalChance = this.CRITICAL_CHANCE_BASE + (attributes.focus * this.CRITICAL_CHANCE_PER_FOCUS);
     const isCritical = forceCritical || Math.random() < criticalChance;
     
     if (isCritical) {
@@ -188,8 +190,16 @@ export class BattleEngine {
     if (state.guardianStatusEffects.some(e => e.type === 'confusion')) baseDamage *= 0.7;
     if (state.guardianStatusEffects.some(e => e.type === 'slow')) baseDamage *= 0.6;
     if (state.playerStatusEffects.some(e => e.type === 'focused')) resilience += 5;
+    
     const isShielded = state.playerStatusEffects.some(e => e.type === 'shielded');
-    const damageReduction = 1 - (resilience * this.RESILIENCE_DAMAGE_REDUCTION);
+    
+    // Capped Resilience Logic
+    const reductionPercent = Math.min(
+      resilience * this.RESILIENCE_DAMAGE_REDUCTION,
+      this.RESILIENCE_REDUCTION_CAP
+    );
+    const damageReduction = 1 - reductionPercent;
+    
     let damageTaken = Math.max(5, Math.floor(baseDamage * Math.max(0.1, damageReduction)));
     if (isShielded) damageTaken = Math.floor(damageTaken * 0.15);
     
@@ -228,23 +238,24 @@ export class BattleEngine {
       },
       beast: {
         standard: [{ name: 'Primal Roar', baseDamage: 18, message: 'The beast\'s roar shakes the ground!' }],
-        punishment: [{ name: 'Savage Bite', baseDamage: 35, message: 'Razor-sharp fangs punish your mistake!' }],
+        punishment: [{ name: 'Savage Bite', baseDamage: 35, message: 'Razor-sharp fangs punish your mistake!', statusEffect: { type: 'bleed', duration: 3 } }],
         comboBreaker: [{ name: 'Pounce', baseDamage: 22, message: 'The beast leaps, disrupting your rhythm!' }],
         finisher: [{ name: 'Feral Frenzy', baseDamage: 50, message: 'The wounded beast enters a berserk rage!' }]
       },
       dragon: {
         standard: [{ name: 'Flame Breath', baseDamage: 22, message: 'Scorching flames test your resolve!' }],
-        punishment: [{ name: 'Inferno Blast', baseDamage: 42, message: 'Your error ignites a firestorm!' }],
+        punishment: [{ name: 'Inferno Blast', baseDamage: 42, message: 'Your error ignites a firestorm!', statusEffect: { type: 'burn', duration: 4 } }],
         comboBreaker: [{ name: 'Wing Buffet', baseDamage: 25, message: 'Powerful wings knock you off balance!' }],
         finisher: [{ name: 'Dragon\'s Wrath', baseDamage: 60, message: 'The dragon channels ancient fury!' }]
       },
       king: {
         standard: [{ name: 'Royal Decree', baseDamage: 25, message: 'The Silence King\'s word is law!' }],
-        punishment: [{ name: 'Void Sentence', baseDamage: 50, message: 'Absolute silence crushes all sound!' }],
+        punishment: [{ name: 'Void Sentence', baseDamage: 50, message: 'Absolute silence crushes all sound!', statusEffect: { type: 'silenced', duration: 2 } }],
         comboBreaker: [{ name: 'Crushing Authority', baseDamage: 30, message: 'The king\'s presence is overwhelming!', statusEffect: { type: 'slow', duration: 2 } }],
         finisher: [{ name: 'Final Judgment', baseDamage: 75, message: 'The Silence King delivers his ultimate verdict!' }]
       }
     };
+
     const set = patterns[guardian.id] || patterns.mumbler;
     if (playerHealthPercent < 35 && Math.random() < 0.9) return set.finisher[0];
     if (!wasPlayerCorrect && Math.random() < 0.8) return set.punishment[0];

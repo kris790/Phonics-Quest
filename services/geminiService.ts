@@ -40,18 +40,26 @@ export const fetchQuestions = async (level: number): Promise<DigraphQuestion[]> 
   }
 };
 
-export const getNarrativeFeedback = async (isCorrect: boolean, word: string, streak: number): Promise<string> => {
+export const getNarrativeFeedback = async (isCorrect: boolean, word: string, streak: number): Promise<{ text: string, audio?: string }> => {
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
             contents: `Write a very short (max 12 words) encouraging battle narration for a child playing a digraph learning game. The child just got a word ${isCorrect ? 'RIGHT' : 'WRONG'} for the word "${word}". Current streak is ${streak}. Make it sound epic and crystal-cave themed.`,
         });
-        return response.text || (isCorrect ? "Crystal power surges!" : "The shadow thickens...");
+        const text = response.text || (isCorrect ? "Crystal power surges!" : "The shadow thickens...");
+        const audio = await generateSpeech(text);
+        return { text, audio };
     } catch (error) {
-        return isCorrect ? "Excellent hit!" : "Watch out for the shadow!";
+        const text = isCorrect ? "Excellent hit!" : "Watch out for the shadow!";
+        const audio = await generateSpeech(text);
+        return { text, audio };
     }
 };
 
+/**
+ * Generates audio for a given text using Gemini TTS.
+ * Returns raw PCM data as base64.
+ */
 export const generateSpeech = async (text: string, voice: string = 'Kore'): Promise<string | undefined> => {
   try {
     const response = await ai.models.generateContent({

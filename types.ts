@@ -3,6 +3,16 @@ export type Difficulty = 'easy' | 'normal' | 'hard' | 'heroic';
 export type BattlePhase = 'intro' | 'player-turn' | 'spell-cast' | 'guardian-turn' | 'round-end' | 'victory' | 'defeat';
 export type AppState = 'world-map' | 'battle' | 'character-sheet' | 'quest-log' | 'sanctuary' | 'hero-room';
 
+export type StatusEffectType = 
+  | 'confusion' 
+  | 'slow' 
+  | 'focused' 
+  | 'shielded' 
+  | 'bleed' 
+  | 'burn' 
+  | 'silenced' 
+  | 'stunned';
+
 export interface LootItem {
   id: string;
   name: string;
@@ -34,7 +44,7 @@ export interface PhonicsTask extends DigraphQuestion {
 }
 
 export interface StatusEffect {
-  type: string;
+  type: StatusEffectType;
   duration: number;
   target: 'player' | 'guardian';
 }
@@ -111,6 +121,7 @@ export interface BattleState {
   isComplete: boolean;
   victory: boolean | null;
   feedback: string;
+  audioFeedback?: string;
   guardianStatusEffects: StatusEffect[];
   playerStatusEffects: StatusEffect[];
   activeHint: boolean;

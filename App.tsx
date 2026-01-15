@@ -220,6 +220,7 @@ const App: React.FC = () => {
   const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(() => localStorage.getItem(AUDIO_MUTE_KEY) === 'true');
   const liveSessionRef = useRef<any>(null);
+  const lastAudioPlayedRef = useRef<string | null>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem(SAVE_KEY);
@@ -237,6 +238,15 @@ const App: React.FC = () => {
   }, [state.progression, state.chapters, state.quests, state.currentChapterId]);
 
   useEffect(() => { localStorage.setItem(AUDIO_MUTE_KEY, String(isMuted)); }, [isMuted]);
+
+  // Effect to automatically play speech when it is dispatched to the state
+  useEffect(() => {
+    const audio = state.battle.audioFeedback;
+    if (audio && audio !== lastAudioPlayedRef.current && !isMuted) {
+      playTTS(audio);
+      lastAudioPlayedRef.current = audio;
+    }
+  }, [state.battle.audioFeedback, isMuted]);
 
   const mappedGameState = useMemo(() => ({
     playerHP: state.battle.playerHealth,
@@ -275,12 +285,25 @@ const App: React.FC = () => {
     if (state.battle.phase !== 'player-turn') return;
     const currentTask = state.battle.tasks[state.battle.currentTaskIndex];
     const isCorrect = selected.toLowerCase() === currentTask.correctDigraph.toLowerCase();
+    
+    // Process core battle logic first
     const { nextState } = BattleEngine.processTurn(state.battle, isCorrect, state.progression.attributes);
     
+    // Fetch dynamic AI feedback and speech
+    getNarrativeFeedback(isCorrect, currentTask.word, nextState.comboStreak).then((aiFeedback) => {
+      // Dispatch an action to update feedback text and play generated speech via side-effect
+      dispatch({ 
+        type: 'UPDATE_BATTLE', 
+        state: { 
+          feedback: aiFeedback.text, 
+          audioFeedback: aiFeedback.audio 
+        } 
+      });
+    });
+
     if (isCorrect) {
       setAnimationState('attacking');
       dispatch({ type: 'UPDATE_BATTLE', state: nextState });
-      speak(nextState.feedback);
       setTimeout(() => {
         setAnimationState('taking-damage');
         setTimeout(() => {
@@ -294,7 +317,6 @@ const App: React.FC = () => {
       const guardianState = BattleEngine.processGuardianTurn(nextState, state.progression.attributes.resilience);
       setTimeout(() => {
         dispatch({ type: 'UPDATE_BATTLE', state: guardianState });
-        speak(guardianState.feedback);
         setTimeout(() => {
           setAnimationState('idle');
           dispatch({ type: 'UPDATE_BATTLE', state: BattleEngine.checkCompletion(guardianState) });

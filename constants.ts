@@ -1,7 +1,7 @@
 
 import { NPC, Decoration } from './types';
 
-export const APP_VERSION = '2.0.0';
+export const APP_VERSION = '2.1.0';
 export const INITIAL_HP = 100;
 export const DAMAGE_PER_HIT = 20;
 export const STREAK_BONUS_THRESHOLD = 3;
