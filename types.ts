@@ -1,7 +1,7 @@
 
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'heroic';
 export type BattlePhase = 'intro' | 'player-turn' | 'spell-cast' | 'guardian-turn' | 'round-end' | 'victory' | 'defeat';
-export type AppState = 'world-map' | 'battle' | 'character-sheet' | 'quest-log';
+export type AppState = 'world-map' | 'battle' | 'character-sheet' | 'quest-log' | 'sanctuary' | 'hero-room';
 
 export interface LootItem {
   id: string;
@@ -21,7 +21,6 @@ export interface BattleRewards {
   loot?: LootItem[];
 }
 
-// Redefined to represent the raw data structure from the Gemini API
 export interface DigraphQuestion {
   word: string;
   displayWord: string;
@@ -32,6 +31,20 @@ export interface DigraphQuestion {
 
 export interface PhonicsTask extends DigraphQuestion {
   taskId: string;
+}
+
+export interface StatusEffect {
+  type: string;
+  duration: number;
+  target: 'player' | 'guardian';
+}
+
+export interface GuardianAttack {
+  name: string;
+  baseDamage: number;
+  message: string;
+  condition?: () => boolean;
+  statusEffect?: Omit<StatusEffect, 'target'>;
 }
 
 export interface Guardian {
@@ -62,6 +75,9 @@ export interface TaskResult {
   usedHint: boolean;
   damageDealt: number;
   criticalHit: boolean;
+  comboStreak: number;
+  comboMultiplier?: number;
+  appliedStatusEffects: StatusEffect[];
 }
 
 export interface Powerups {
@@ -74,7 +90,6 @@ export interface Powerups {
 export interface BattleState {
   battleId: string;
   guardian: Guardian;
-  difficulty: Difficulty;
   phase: BattlePhase;
   currentRound: number;
   maxRounds: number;
@@ -96,6 +111,38 @@ export interface BattleState {
   isComplete: boolean;
   victory: boolean | null;
   feedback: string;
+  guardianStatusEffects: StatusEffect[];
+  playerStatusEffects: StatusEffect[];
+  activeHint: boolean;
+  bonuses?: {
+    startingStreak: number;
+    weakPointActive: boolean;
+  };
+}
+
+export interface Attributes {
+  readingPower: number;
+  focus: number;
+  speed: number;
+  resilience: number;
+}
+
+export interface NPC {
+  id: string;
+  name: string;
+  title: string;
+  bonus: string;
+  description: string;
+  icon: string;
+  unlockedAfter: string;
+}
+
+export interface Decoration {
+  id: string;
+  name: string;
+  slot: 'wall' | 'desk' | 'floor';
+  icon: string;
+  unlockedAtRestorationLevel: number;
 }
 
 export interface ProgressionState {
@@ -104,12 +151,11 @@ export interface ProgressionState {
   maxXp: number;
   crystalsFound: number;
   unlockedChapters: string[];
-  attributes: {
-    readingPower: number;
-    focus: number;
-    speed: number;
-    resilience: number;
-  };
+  attributes: Attributes;
+  unlockedNPCs: string[];
+  restorationPoints: number;
+  restorationLevel: number;
+  decorations: Record<string, string>; // slot -> decorationId
 }
 
 export interface Quest {

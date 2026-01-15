@@ -1,4 +1,7 @@
 
+import { NPC, Decoration } from './types';
+
+export const APP_VERSION = '2.0.0';
 export const INITIAL_HP = 100;
 export const DAMAGE_PER_HIT = 20;
 export const STREAK_BONUS_THRESHOLD = 3;
@@ -6,7 +9,7 @@ export const STREAK_BONUS_THRESHOLD = 3;
 export const WORLD_LORE = {
   kingdomName: "The Phonics Kingdom",
   theGreatSilence: "A mysterious celestial event caused by 'The Muted One'—a shadow that fed on the Kingdom's resonance. When the First Syllable was stolen, language physically crumbled into dust.",
-  theGuardians: "Once the 'Five High Cantors' of the Academy, they were corrupted when they tried to hold onto the echoes of the stolen Syllable. They now exist as barriers of static and fog."
+  theGuardians: "Once the 'Five High Cantors' of the Academy, they were corrupted when they tried to hold onto the echoes of the stolen Syllable."
 };
 
 export const HERO_LORE = {
@@ -17,19 +20,72 @@ export const HERO_LORE = {
   chronicles: [
     {
       title: "The Child of Resonance",
-      content: "Caelum was born with 'The Sight'—the ability to see words as physical vibrations of light. In the Whispering Grove, they practiced by catching drifting vowels and weaving them into songs that could make the very ground bloom."
+      content: "Caelum was born with 'The Sight'—the ability to see words as physical vibrations of light."
     },
     {
       title: "The Stolen Syllable",
-      content: "During the Festival of Clarity, 'The Muted One' descended. In a single heartbeat, every voice in the Kingdom vanished. Caelum's parents, the Royal Lexicographers, were turned to crystalline statues mid-sentence. Only Caelum escaped, clutching the Lumina Quill."
+      content: "During the Festival of Clarity, 'The Muted One' descended. Voice vanished instantly."
     },
     {
       title: "The Weaver's Vow",
-      content: "Every Guardian Caelum faces is a piece of their past. The Mumbler was their first phonics teacher; the Vowel Vortex was their singing coach. Caelum battles not to destroy, but to remind them of the music they once shared. They will not rest until the Kingdom sings again."
+      content: "Every Guardian Caelum faces is a piece of their past. Caelum battles to remind them of the music they once shared."
     }
-  ],
-  backstory: "The last apprentice of the Academy of Echoes, Caelum journeys to restore the Grand Harmony by reclaiming the stolen fragments of language."
+  ]
 };
+
+export const AUDIO_TRACKS = {
+  map: 'https://assets.mixkit.co/music/preview/mixkit-mystical-dream-578.mp3',
+  battle: 'https://assets.mixkit.co/music/preview/mixkit-epic-hero-battle-627.mp3',
+  victory: 'https://assets.mixkit.co/music/preview/mixkit-winning-elevation-1113.mp3',
+  defeat: 'https://assets.mixkit.co/music/preview/mixkit-sad-and-melancholy-311.mp3'
+};
+
+export const NPCS: NPC[] = [
+  {
+    id: 'eldrin',
+    name: 'Eldrin the Scribe',
+    title: 'Archive Keeper',
+    bonus: '+10% XP Boost',
+    description: 'Documents every syllable restored. His archives help you learn faster from every battle.',
+    icon: '✒️',
+    unlockedAfter: 'ch1'
+  },
+  {
+    id: 'borin',
+    name: 'Borin the Blacksmith',
+    title: 'Essence Smith',
+    bonus: '-15% Upgrade Cost',
+    description: 'Forges resonance into raw power. He makes strengthening your attributes cheaper.',
+    icon: '⚒️',
+    unlockedAfter: 'ch2'
+  },
+  {
+    id: 'lyra',
+    name: 'Lyra the Minstrel',
+    title: 'Voice of Harmony',
+    bonus: '+1 Starting Streak',
+    description: 'Her songs prime your soul for battle. You start every encounter with a streak already built.',
+    icon: '🪕',
+    unlockedAfter: 'ch3'
+  },
+  {
+    id: 'finn',
+    name: 'Finn the Scout',
+    title: 'Shadow Tracker',
+    bonus: 'First-Hit Critical',
+    description: 'He finds the cracks in the shadows. Your first correct spell will always strike a weak point.',
+    icon: '🏹',
+    unlockedAfter: 'ch4'
+  }
+];
+
+export const DECORATIONS: Decoration[] = [
+  { id: 'trophy_ch1', name: 'Muffler of Silence', slot: 'wall', icon: '🧣', unlockedAtRestorationLevel: 1 },
+  { id: 'desk_crystal', name: 'Resonance Geode', slot: 'desk', icon: '🔮', unlockedAtRestorationLevel: 2 },
+  { id: 'rug_sh', name: "Weaver's Rug", slot: 'floor', icon: '🧶', unlockedAtRestorationLevel: 3 },
+  { id: 'trophy_ch2', name: 'Vortex Vial', slot: 'wall', icon: '🧪', unlockedAtRestorationLevel: 4 },
+  { id: 'desk_quill', name: 'Quill of Truth', slot: 'desk', icon: '🖋️', unlockedAtRestorationLevel: 5 },
+];
 
 export const CHAPTERS = [
   {
@@ -37,15 +93,15 @@ export const CHAPTERS = [
     name: 'Consonant Cove',
     isUnlocked: true,
     isCompleted: false,
-    background: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAgUuGIqRApdeiRdPh5ycGoS7lvOg16yMXywpKNpK0b_eBF5ILB_Z28wH29gtjVSi6XVzAGa2kwifYN89d_30lGLNWL4FZ-7mPIeWfAANgIXYS5PEPJEXz2xsR_HOYRoYhFobe80m6QfPLuwidLqKJkGzgOODdCPPzmo8AF_pSEWFm8yUEdOlxuFPCaQoKIVthXgi3O4GHGYOFhsV3MPeKou7YWg3obeIU_yQVic7haMPelNbgUmbOtUKF_a2BwMxpuQ0CPPuYImA',
+    background: 'https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?auto=format&fit=crop&q=80&w=1200',
     guardian: {
-      id: 'g1',
+      id: 'mumbler',
       name: 'The Mumbler',
       title: 'Herald of Fog',
       island: 'Consonant Cove',
       description: 'A fuzzy creature that was once the Guardian of Clarity, now lost in a haze of static.',
-      baseHealth: 100,
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCKxVGCVcC2qbSqUopQLgfG1arggAJXfVOyQ5e3QTKwGtLK9V3IU0mmJp2bGgfS10ZgJ8lpZXXx-L6G8Ivv_SRUOxW0deIitchydlHjBJ1Wzr6s80GkuDQ4ZxSW8tgKoeVOkciNLQQtB4okkl3L3Csl0Wd4grWwYxG8QirCL3_MsXpu_Upy3cKLrkYSrn9uHQHeI2B2pPBF_ndFWIOmxpI5RdRIPeOMaXiIBfPQEkMn6aSX8zRSjfXGU5hotXx3zDK3omSTyU-CMw',
+      baseHealth: 300,
+      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=400',
       weakness: 'Clear Sounds',
       accentColor: '#8b5cf6'
     }
@@ -57,13 +113,13 @@ export const CHAPTERS = [
     isCompleted: false,
     background: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&q=80&w=1200',
     guardian: {
-      id: 'g2',
+      id: 'vortex',
       name: 'Vowel Vortex',
       title: 'The Sound Storm',
       island: 'Vowel Valley',
       description: 'A chaotic spirit that sucks the melody out of words.',
-      baseHealth: 150,
-      image: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&q=80&w=400',
+      baseHealth: 500,
+      image: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=400',
       weakness: 'Vowel Mastery',
       accentColor: '#f59e0b'
     }
@@ -75,14 +131,14 @@ export const CHAPTERS = [
     isCompleted: false,
     background: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=1200',
     guardian: {
-      id: 'g3',
-      name: 'Blend Beast',
-      title: 'Tide of Chaos',
+      id: 'beast',
+      name: 'The Blend Beast',
+      title: 'The Unified Echo',
       island: 'Blend Beach',
-      description: 'An aggressive monster that shatters blends into single sounds.',
-      baseHealth: 200,
-      image: 'https://images.unsplash.com/photo-1541411191162-9940027ca2c5?auto=format&fit=crop&q=80&w=400',
-      weakness: 'Consonant Blends',
+      description: 'A multi-limbed creature that thrives on merged sounds. Master blends to tame it.',
+      baseHealth: 750,
+      image: 'https://images.unsplash.com/photo-1550684848-fac1c5b4e853?auto=format&fit=crop&q=80&w=400',
+      weakness: 'Perfect Blends',
       accentColor: '#10b981'
     }
   },
@@ -91,17 +147,17 @@ export const CHAPTERS = [
     name: 'Digraph Den',
     isUnlocked: false,
     isCompleted: false,
-    background: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=1200',
+    background: 'https://images.unsplash.com/photo-1519302959554-a75be0afc82a?auto=format&fit=crop&q=80&w=1200',
     guardian: {
-      id: 'g4',
+      id: 'dragon',
       name: 'Digraph Dragon',
-      title: 'Pair Hoarder',
+      title: 'The Dual Flame',
       island: 'Digraph Den',
-      description: 'A greedy dragon that splits powerful letter pairs apart.',
-      baseHealth: 250,
-      image: 'https://images.unsplash.com/photo-1614726365922-0d1279a37e1a?auto=format&fit=crop&q=80&w=400',
-      weakness: 'Letter Pairs',
-      accentColor: '#0ddff2'
+      description: 'A dragon with two heads, representing the power of paired letters.',
+      baseHealth: 1000,
+      image: 'https://images.unsplash.com/photo-1577493322601-3ae1fbd27098?auto=format&fit=crop&q=80&w=400',
+      weakness: 'Paired Prowess',
+      accentColor: '#ef4444'
     }
   },
   {
@@ -111,15 +167,15 @@ export const CHAPTERS = [
     isCompleted: false,
     background: 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?auto=format&fit=crop&q=80&w=1200',
     guardian: {
-      id: 'g5',
+      id: 'king',
       name: 'The Silent King',
-      title: 'Ruler of Stillness',
+      title: 'Monarch of Mutes',
       island: 'Royal Keep',
-      description: 'A majestic king whose tragic decree stole the voices of all.',
-      baseHealth: 400,
-      image: 'https://images.unsplash.com/photo-1560932763-0ad9eaeb5131?auto=format&fit=crop&q=80&w=400',
-      weakness: 'All Skills',
-      accentColor: '#ef4444'
+      description: 'The final barrier to restoring the kingdom\'s voice.',
+      baseHealth: 1500,
+      image: 'https://images.unsplash.com/photo-1590856029826-c7a73142bbf1?auto=format&fit=crop&q=80&w=400',
+      weakness: 'Absolute Clarity',
+      accentColor: '#fcd34d'
     }
   }
 ];
@@ -142,5 +198,5 @@ export const FALLBACK_QUESTIONS = [
 ];
 
 export const ASSETS = {
-  hero: 'https://lh3.googleusercontent.com/aida-public/AB6AXuD9er1ezLiN7AMHCG2n5LTwKzCEuARlIokPRmCb8umsI-IOXdFby8dVtsB_bLeZLLYw1EEvAy9qMazBbklz-loK-ytSjkwkvuttmsjqYP9VRgZkN0omXAJzUpmwlHznBdzVkCZsQ0UZD68HmTUeyZjjvEqEXnzIO6YT4c4Tc0T4HoGC4SQFs_Cc1umRRvBOrM1PVXIof_rjL2P4KkK_QHj42qR-7_orK-8KIqtoDeL4eeEz7oR_CbWc1FF2Qv9Z_4EIDd9CoVohMg'
+  hero: 'https://images.unsplash.com/photo-1635339001026-611295b29091?auto=format&fit=crop&q=80&w=400'
 };
