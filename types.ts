@@ -3,6 +3,29 @@ export type Difficulty = 'easy' | 'normal' | 'hard' | 'heroic';
 export type BattlePhase = 'intro' | 'player-turn' | 'spell-cast' | 'guardian-turn' | 'round-end' | 'victory' | 'defeat';
 export type AppState = 'world-map' | 'battle' | 'character-sheet' | 'quest-log' | 'sanctuary' | 'hero-room' | 'ledger';
 
+export interface Artifact {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string;
+  timestamp: number;
+}
+
+export interface ProgressionState {
+  level: number;
+  xp: number;
+  maxXp: number;
+  crystalsFound: number;
+  unlockedChapters: string[];
+  attributes: Attributes;
+  unlockedNPCs: string[];
+  restorationPoints: number;
+  restorationLevel: number;
+  decorations: Record<string, string>; // slot -> decorationId
+  artifacts: Artifact[];
+  recentActivities: ActivityEntry[];
+}
+
 export type StatusEffectType = 
   | 'confusion' 
   | 'slow' 
@@ -161,23 +184,9 @@ export interface Decoration {
 
 export interface ActivityEntry {
   id: string;
-  type: 'npc_rescued' | 'reward_claimed' | 'decoration_placed' | 'battle_victory' | 'quest_complete' | 'level_up';
+  type: 'npc_rescued' | 'reward_claimed' | 'decoration_placed' | 'battle_victory' | 'quest_complete' | 'level_up' | 'artifact_forged';
   description: string;
   timestamp: number;
-}
-
-export interface ProgressionState {
-  level: number;
-  xp: number;
-  maxXp: number;
-  crystalsFound: number;
-  unlockedChapters: string[];
-  attributes: Attributes;
-  unlockedNPCs: string[];
-  restorationPoints: number;
-  restorationLevel: number;
-  decorations: Record<string, string>; // slot -> decorationId
-  recentActivities: ActivityEntry[];
 }
 
 export interface Quest {

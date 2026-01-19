@@ -1,6 +1,6 @@
 
 import { GoogleGenAI, Type, Modality } from "@google/genai";
-import { DigraphQuestion } from "../types";
+import { DigraphQuestion, Artifact } from "../types";
 import { FALLBACK_QUESTIONS } from "../constants";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -56,10 +56,72 @@ export const getNarrativeFeedback = async (isCorrect: boolean, word: string, str
     }
 };
 
-/**
- * Generates audio for a given text using Gemini TTS.
- * Returns raw PCM data as base64.
- */
+export const generateArtifactImage = async (chapterName: string, guardianName: string): Promise<Artifact> => {
+  const dynamicAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  // 1. Get description
+  const descResponse = await dynamicAi.models.generateContent({
+    model: 'gemini-3-flash-preview',
+    contents: `Describe a unique, beautiful magical relic found in ${chapterName} after defeating ${guardianName}. It should be crystalline and symbolic of phonics/voice. Max 20 words for the description and give it a name.`
+  });
+  
+  const text = descResponse.text || "The Crystal of Clarity";
+  const name = text.split('\n')[0].replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 30);
+  
+  // 2. Generate Image
+  const imgResponse = await dynamicAi.models.generateContent({
+    model: 'gemini-2.5-flash-image',
+    contents: {
+      parts: [
+        { text: `A highly detailed, cinematic digital painting of a magical crystal artifact: ${text}. Intricate lighting, bokeh background, holographic aura, 4k resolution.` }
+      ]
+    },
+    config: {
+      imageConfig: { aspectRatio: "1:1" }
+    }
+  });
+
+  let imageUrl = "";
+  for (const part of imgResponse.candidates[0].content.parts) {
+    if (part.inlineData) {
+      imageUrl = `data:image/png;base64,${part.inlineData.data}`;
+      break;
+    }
+  }
+
+  return {
+    id: `art-${Date.now()}`,
+    name: name,
+    description: text,
+    imageUrl: imageUrl,
+    timestamp: Date.now()
+  };
+};
+
+export const generateRestorationVideo = async (chapterName: string): Promise<string> => {
+  const dynamicAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  
+  let operation = await dynamicAi.models.generateVideos({
+    model: 'veo-3.1-fast-generate-preview',
+    prompt: `A cinematic shot of ${chapterName} where shadows are dissolving into bright white crystalline light, revealing a lush and vibrant fantasy island. Restoration of sound and color.`,
+    config: {
+      numberOfVideos: 1,
+      resolution: '720p',
+      aspectRatio: '16:9'
+    }
+  });
+
+  while (!operation.done) {
+    await new Promise(resolve => setTimeout(resolve, 10000));
+    operation = await dynamicAi.operations.getVideosOperation({ operation: operation });
+  }
+
+  const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+  const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+  const blob = await response.blob();
+  return URL.createObjectURL(blob);
+};
+
 export const generateSpeech = async (text: string, voice: string = 'Kore'): Promise<string | undefined> => {
   try {
     const response = await ai.models.generateContent({

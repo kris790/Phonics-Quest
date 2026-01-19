@@ -11,7 +11,7 @@ import KingdomLedger from './components/KingdomLedger';
 import VictoryScreen from './components/battle/VictoryScreen';
 import DefeatScreen from './components/battle/DefeatScreen';
 import AudioEngine from './components/AudioEngine';
-import { RootState, BattleState, AnimationState, PhonicsTask, AppState, Chapter, Attributes, Quest, ActivityEntry } from './types';
+import { RootState, BattleState, AnimationState, PhonicsTask, AppState, Chapter, Attributes, Quest, ActivityEntry, Artifact } from './types';
 import { BattleEngine } from './battleEngine';
 import { fetchQuestions, getNarrativeFeedback, generateSpeech } from './services/geminiService';
 import { playTTS, resumeAudioContext } from './utils/audioUtils';
@@ -20,7 +20,7 @@ import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
 import { calculateBattleRewards } from './utils/rewardsCalculator';
 import { generateSmartId } from './utils/rewardUtils';
 
-const SAVE_KEY = 'phonics_quest_save_v2';
+const SAVE_KEY = 'phonics_quest_save_v3';
 const AUDIO_MUTE_KEY = 'phonics_quest_audio_mute';
 
 type Action = 
@@ -31,7 +31,7 @@ type Action =
   | { type: 'SET_VIEW'; view: AppState }
   | { type: 'ADD_XP'; amount: number }
   | { type: 'ADD_CRYSTALS'; amount: number }
-  | { type: 'COMPLETE_CHAPTER'; chapterId: string }
+  | { type: 'COMPLETE_CHAPTER'; chapterId: string; artifact?: Artifact }
   | { type: 'UPGRADE_ATTRIBUTE'; attribute: keyof Attributes; cost: number }
   | { type: 'ADD_RESTORATION_POINTS'; amount: number }
   | { type: 'CLAIM_RESTORATION_REWARD' }
@@ -58,6 +58,7 @@ const initialState: RootState = {
     restorationPoints: 0,
     restorationLevel: 0,
     decorations: {},
+    artifacts: [],
     recentActivities: []
   },
   quests: { 
@@ -147,11 +148,11 @@ function rootReducer(state: RootState, action: Action): RootState {
         description: `Echo of ${ch.name} restored by defeating ${ch.guardian.name}.`,
         timestamp: Date.now()
       });
-      if (newNPC && !state.progression.unlockedNPCs.includes(newNPC.id)) {
+      if (action.artifact) {
         logs.push({
-          id: generateSmartId('npc-rescue'),
-          type: 'npc_rescued',
-          description: `Rescued ${newNPC.name} from the shadows of ${ch.name}.`,
+          id: generateSmartId('artifact-forge'),
+          type: 'artifact_forged',
+          description: `Forged the unique relic: ${action.artifact.name}.`,
           timestamp: Date.now()
         });
       }
@@ -169,6 +170,7 @@ function rootReducer(state: RootState, action: Action): RootState {
           ...state.progression, 
           unlockedNPCs: newUnlockedNPCs,
           restorationPoints: state.progression.restorationPoints + 100,
+          artifacts: action.artifact ? [...state.progression.artifacts, action.artifact] : state.progression.artifacts,
           recentActivities: logs.slice(-20)
         }
       };
@@ -209,22 +211,12 @@ function rootReducer(state: RootState, action: Action): RootState {
       };
     }
     case 'EQUIP_DECORATION': {
-      const logs = [...state.progression.recentActivities];
-      const deco = state.progression.decorations[action.slot];
-      if (deco !== action.decorationId) {
-        logs.push({
-          id: generateSmartId('deco-placed'),
-          type: 'decoration_placed',
-          description: `Placed a new decoration in the Hero's Room.`,
-          timestamp: Date.now()
-        });
-      }
       return {
         ...state,
         progression: { 
           ...state.progression, 
           decorations: { ...state.progression.decorations, [action.slot]: action.decorationId },
-          recentActivities: logs.slice(-20)
+          recentActivities: state.progression.recentActivities
         }
       };
     }
@@ -344,11 +336,11 @@ const App: React.FC = () => {
     if (audioData) playTTS(audioData);
   };
 
-  const handleBattleEnd = (victory: boolean, rewards?: any) => {
+  const handleBattleEnd = (victory: boolean, rewards?: any, artifact?: Artifact) => {
     if (victory && rewards) {
       dispatch({ type: 'ADD_XP', amount: rewards.xp });
       dispatch({ type: 'ADD_CRYSTALS', amount: rewards.crystals });
-      dispatch({ type: 'COMPLETE_CHAPTER', chapterId: state.currentChapterId });
+      dispatch({ type: 'COMPLETE_CHAPTER', chapterId: state.currentChapterId, artifact });
       
       if (state.battle.maxComboStreak >= 5) {
         dispatch({ type: 'UPDATE_QUEST_PROGRESS', questId: 'q2', amount: 1 });
@@ -482,16 +474,13 @@ const App: React.FC = () => {
             </div>
             <h1 className="text-4xl font-black text-white italic uppercase tracking-tighter mb-2 drop-shadow-[0_0_15px_#0ddff2]">Phonics Quest</h1>
             <p className="text-primary font-bold text-[10px] uppercase tracking-[0.4em] mb-12">Crystal Chronicles</p>
-            
             <p className="text-white/60 text-xs italic mb-12 max-w-[280px]">The Kingdom has fallen silent. Only your resonance can restore the music of words.</p>
-            
             <button 
               onClick={startGame}
               className="px-12 py-5 bg-primary text-background-dark rounded-2xl font-black uppercase tracking-widest text-sm shadow-[0_0_40px_rgba(13,223,242,0.4)] active:scale-95 transition-all hover:brightness-110"
             >
               Awaken the Kingdom
             </button>
-            <p className="mt-6 text-[8px] font-black text-white/20 uppercase tracking-widest italic">User gesture required for audio activation</p>
           </div>
         </div>
       )}
@@ -506,7 +495,6 @@ const App: React.FC = () => {
               <div className="absolute inset-0 z-40 bg-background-dark p-6 overflow-y-auto pb-24 custom-scrollbar">
                 <header className="mb-6">
                   <h1 className="text-3xl font-black text-white tracking-tighter italic uppercase">Kingdom Map</h1>
-                  <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Select an island to reclaim</p>
                 </header>
                 <div className="space-y-4">
                   {state.chapters.map((ch) => (
@@ -525,7 +513,6 @@ const App: React.FC = () => {
                           <span className="text-[10px] font-black text-primary tracking-[0.2em] uppercase">{ch.guardian.island}</span>
                           <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">{ch.name}</h3>
                         </div>
-                        <span className="material-symbols-outlined text-white/40">{ch.isUnlocked ? 'arrow_forward_ios' : 'lock'}</span>
                       </div>
                     </div>
                   ))}
@@ -536,7 +523,15 @@ const App: React.FC = () => {
             {state.view === 'battle' && (
               <>
                 <Arena gameState={mappedGameState} animationState={animationState} />
-                {state.battle.phase === 'victory' && <VictoryScreen guardianName={currentChapter.guardian.name} rewards={calculateBattleRewards(state.battle, state.progression.unlockedNPCs)} progression={state.progression} onComplete={() => handleBattleEnd(true, calculateBattleRewards(state.battle, state.progression.unlockedNPCs))} />}
+                {state.battle.phase === 'victory' && (
+                  <VictoryScreen 
+                    chapterName={currentChapter.name}
+                    guardianName={currentChapter.guardian.name} 
+                    rewards={calculateBattleRewards(state.battle, state.progression.unlockedNPCs)} 
+                    progression={state.progression} 
+                    onComplete={(artifact) => handleBattleEnd(true, calculateBattleRewards(state.battle, state.progression.unlockedNPCs), artifact)} 
+                  />
+                )}
                 {state.battle.phase === 'defeat' && <DefeatScreen guardianName={currentChapter.guardian.name} tasksCompleted={state.battle.currentTaskIndex} totalTasks={state.battle.tasks.length} comboStreak={state.battle.maxComboStreak} onRetry={() => startChapter(currentChapter)} onReturnToMap={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} />}
                 {state.battle.phase !== 'victory' && state.battle.phase !== 'defeat' && <Overlay gameState={mappedGameState} rootState={state} onSelect={handleSelect} onBattleEnd={handleBattleEnd} onPronounce={() => speak(mappedGameState.currentQuestion?.word || "")} onVoiceStart={startVoiceRecognition} onUsePowerup={(type) => dispatch({ type: 'USE_POWERUP', powerupType: type })} isListening={isListening} />}
               </>
@@ -552,7 +547,7 @@ const App: React.FC = () => {
           <div className="relative z-50 h-16 bg-background-dark/95 border-t border-white/5 flex items-center justify-around px-4">
             <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} className={`material-symbols-outlined transition-colors ${state.view === 'world-map' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>map</button>
             <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'sanctuary' })} className={`material-symbols-outlined transition-colors ${state.view === 'sanctuary' || state.view === 'ledger' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>castle</button>
-            <div onClick={() => state.view !== 'battle' && startChapter(currentChapter)} className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center -translate-y-4 border border-primary/40 shadow-lg cursor-pointer animate-pulse hover:bg-primary/30 transition-all"><span className="material-symbols-outlined text-primary">swords</span></div>
+            <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'hero-room' })} className={`material-symbols-outlined transition-colors ${state.view === 'hero-room' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>home</button>
             <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'quest-log' })} className={`material-symbols-outlined transition-colors ${state.view === 'quest-log' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>assignment</button>
             <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'character-sheet' })} className={`material-symbols-outlined transition-colors ${state.view === 'character-sheet' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>person</button>
           </div>
