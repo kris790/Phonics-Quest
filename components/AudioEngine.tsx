@@ -20,7 +20,6 @@ const AudioEngine: React.FC<AudioEngineProps> = ({ view, battlePhase, isMuted, c
   const fadeIntervalRef = useRef<number | null>(null);
   const [currentTrack, setCurrentTrack] = useState<string>('');
 
-  // Determine which track should play based on state
   useEffect(() => {
     let targetTrack = AUDIO_TRACKS.map;
 
@@ -30,21 +29,19 @@ const AudioEngine: React.FC<AudioEngineProps> = ({ view, battlePhase, isMuted, c
       else targetTrack = AUDIO_TRACKS.battle;
     } else if (view === 'world-map') {
       const chapter = chapters.find(c => c.id === currentChapterId);
-      if (chapter) {
+      if (chapter && chapter.ambientAudio) {
         targetTrack = chapter.ambientAudio;
       }
     } else {
-      // Default map theme for other sub-views like character sheet, etc.
       targetTrack = AUDIO_TRACKS.map;
     }
 
-    if (targetTrack !== currentTrack) {
+    if (targetTrack && targetTrack !== currentTrack) {
       transitionTo(targetTrack);
       setCurrentTrack(targetTrack);
     }
-  }, [view, battlePhase, currentChapterId, chapters]);
+  }, [view, battlePhase, currentChapterId, chapters, currentTrack]);
 
-  // Handle Mute/Unmute
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.muted = isMuted;
@@ -52,10 +49,9 @@ const AudioEngine: React.FC<AudioEngineProps> = ({ view, battlePhase, isMuted, c
   }, [isMuted]);
 
   const transitionTo = (url: string) => {
-    // Clear any existing fade
+    if (!url) return;
     if (fadeIntervalRef.current) clearInterval(fadeIntervalRef.current);
 
-    // Create next audio element
     const nextAudio = new Audio(url);
     nextAudio.loop = true;
     nextAudio.volume = 0;
@@ -63,7 +59,9 @@ const AudioEngine: React.FC<AudioEngineProps> = ({ view, battlePhase, isMuted, c
     nextAudioRef.current = nextAudio;
 
     const startTransition = () => {
-      nextAudio.play().catch(e => console.log("Audio autoplay blocked until interaction"));
+      nextAudio.play().catch(e => {
+        // Silently catch autoplay errors, common in mobile browsers
+      });
       
       const step = 0.05;
       const intervalTime = FADE_DURATION * step;
@@ -71,13 +69,11 @@ const AudioEngine: React.FC<AudioEngineProps> = ({ view, battlePhase, isMuted, c
       fadeIntervalRef.current = window.setInterval(() => {
         let finished = true;
 
-        // Fade out current
         if (audioRef.current) {
           audioRef.current.volume = Math.max(0, audioRef.current.volume - step);
           if (audioRef.current.volume > 0) finished = false;
         }
 
-        // Fade in next
         if (nextAudioRef.current) {
           nextAudioRef.current.volume = Math.min(MAX_VOLUME, nextAudioRef.current.volume + step);
           if (nextAudioRef.current.volume < MAX_VOLUME) finished = false;
@@ -98,7 +94,7 @@ const AudioEngine: React.FC<AudioEngineProps> = ({ view, battlePhase, isMuted, c
     startTransition();
   };
 
-  return null; // Headless component
+  return null;
 };
 
 export default AudioEngine;

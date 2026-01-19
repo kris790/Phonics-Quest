@@ -16,11 +16,12 @@ export function getAudioContext(): AudioContext {
 
 /**
  * Critical for iOS: Call this on every 'click' or 'touchstart' event.
+ * Enhanced to handle aggressive suspension.
  */
 export async function resumeAudioContext() {
   const ctx = getAudioContext();
-  // Fix: TypeScript error regarding union overlap. Cast to any to safely check platform-specific states.
-  if ((ctx.state as any) === 'suspended' || (ctx.state as any) === 'interrupted') {
+  /* Fix: Added explicit cast to string for checking 'interrupted' state as it might not be in the standard AudioContextState union but is used on iOS. */
+  if (ctx.state === 'suspended' || (ctx.state as string) === 'interrupted') {
     try {
       await ctx.resume();
       console.log("AudioContext resumed successfully.");
@@ -28,8 +29,14 @@ export async function resumeAudioContext() {
       console.warn("Failed to resume AudioContext:", err);
     }
   }
+  
+  // Re-try after a short delay if still suspended (common iOS race condition)
+  if (ctx.state === 'suspended') {
+     setTimeout(() => ctx.resume().catch(() => {}), 100);
+  }
 }
 
+// Manual implementation of base64 encode/decode as per Gemini API guidelines
 export function decodeBase64(base64: string): Uint8Array {
   try {
     const binaryString = atob(base64);
@@ -43,6 +50,15 @@ export function decodeBase64(base64: string): Uint8Array {
     console.error("Base64 decoding failed:", e);
     return new Uint8Array(0);
   }
+}
+
+export function encode(bytes: Uint8Array): string {
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
 
 export async function decodeAudioData(
@@ -67,7 +83,7 @@ export async function decodeAudioData(
 export async function playTTS(base64Audio: string) {
   try {
     const ctx = getAudioContext();
-    // Re-verify context is active before play
+    // Aggressively resume before playback
     await resumeAudioContext();
     
     const rawData = decodeBase64(base64Audio);

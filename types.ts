@@ -43,6 +43,12 @@ export interface Egg {
   isReady: boolean;
 }
 
+export interface EquippedGear {
+  weapon?: string; // id of LootItem in inventory
+  armor?: string;
+  charm?: string;
+}
+
 export interface ProgressionState {
   level: number;
   xp: number;
@@ -55,8 +61,11 @@ export interface ProgressionState {
   restorationLevel: number;
   decorations: Record<string, string>;
   artifacts: Artifact[];
+  inventory: LootItem[];
+  equippedGear: EquippedGear;
   recentActivities: ActivityEntry[];
   hasSeenTutorial: boolean;
+  hasSeenDisclaimer: boolean; // P0: COPPA tracking
   accuracyData: Record<string, DigraphAccuracy>;
   settings: GameSettings;
   pets: Pet[];
@@ -85,6 +94,7 @@ export interface LootItem {
   icon: string;
   description: string;
   amount?: number;
+  stats?: Partial<Attributes>;
 }
 
 export interface BattleRewards {

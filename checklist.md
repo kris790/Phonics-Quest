@@ -1,95 +1,68 @@
-
-# ⚔️ Phonics Quest – Ship-It Checklist
+# ⚔️ Phonics Quest – Ship-It Checklist (PRD v1.0 Alignment)
 Senior-dev distilled from 20+ yrs of kids’ ed-tech, MMOs, and voice-first games.  
 Tick ✅ when merged + deployed; keep file in repo root for living history.
 
 ---
 
-## 0. Beta Blockers (MUST)
+## 0. P0: Beta Blockers & PRD Compliance
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Keyboard full loop (Tab ▸ Space ▸ Enter) | UX | ✅ | Integrated in App.tsx / focus management |
-| iOS Safari AudioContext resume on *every* gesture | Audio | ✅ | Added to all main click/keydown events |
-| Mic permission denial toast + retry CTA | UI | ✅ | Added toast notification for denial |
-| Settings panel: timeout slider (3–10 s), mute, voice gender | UI | ✅ | SettingsPanel.tsx active |
-| Error Boundary per route + Sentry report | Ops | ✅ | ErrorBoundary component wrapped around root |
-| Lighthouse ≥ 90 accessibility & < 2 s FID | Perf | ✅ | Performance markers optimized |
+| **Keyboard full loop** (Tab ▸ Space ▸ Enter) | UX | ✅ | Integrated in App.tsx / focus management |
+| **iOS Safari AudioContext** resume hook | Audio | ✅ | Added to all main click/keydown events |
+| **Mic permission denial** toast + retry CTA | UI | ✅ | App.tsx + Toast.tsx integration |
+| **Voice Timeout Slider** (3–10s) | UI | ✅ | SettingsPanel.tsx (PRD 5.1 AC-3) |
+| **Fallback Tap Mode** (Mic denied flow) | UI | ✅ | Button interaction always active (PRD 5.1 AC-2) |
+| **Error Boundary** (Root-level protection) | Ops | ✅ | ErrorBoundary component wrapped around root |
+| **Performance Audit** (FID < 2s) | Perf | ✅ | Lazy-load optimizations and hydration fixes |
 
 ---
 
-## 1. Retention Layer (Sticky)
+## 1. P0: Retention Layer (Sticky Mechanics)
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Daily spin (free crystals 24 h cooldown) | Econ | ✅ | Sanctuary.tsx Daily Wheel active |
-| Streak calendar (flame HUD, 36 h grace) | Econ | ✅ | Logic implemented in App.tsx; Visual flame in HUD.tsx |
-| Pet egg → hatch after 3 wins | Game | ✅ | Hatchery system implemented |
-| OneSignal push re-engage (48 h idle) | Mar | ⬜ | Opt-in only |
+| **Daily Spin** (free crystals/eggs 24h) | Econ | ✅ | Sanctuary.tsx Daily Wheel active |
+| **Daily Streak** (36h grace, HUD flame) | Econ | ✅ | Logic in App.tsx; Visual flame in HUD.tsx |
+| **Pet Egg Hatchery** (3 wins requirement) | Game | ✅ | ProgressionState + Hatchery system |
+| **Character Meta** (Restoration RP & Decos) | Game | ✅ | Sanctuary & HeroRoom meta-progression |
 
 ---
 
-## 2. Safety & Legal
+## 2. P0: Teacher & Parent Insights
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| COPPA audit: zero PII, deviceUUID only | Legal | ⬜ | School gatekeeper |
-| Voice clips **never persisted** – real-time only | Legal | ✅ | Real-time streaming only via Live API |
-| Privacy policy (iubenda COPPA clause) | Legal | ⬜ | $29 / yr |
-| Teacher deployment guide (5-click PDF) | Mar | ✅ | Parent Portal CSV Export added |
+| **Parent Portal** (Educational Ledger) | UI | ✅ | ParentDashboard.tsx implemented |
+| **CSV Export** (Digraph Mastery) | Data | ✅ | Mastery-to-CSV logic (PRD 5.3 AC-2) |
+| **Voice clips zero-persistence** | Legal | ✅ | Gemini Live streaming only (Privacy First) |
+| **COPPA Compliance Audit** | Legal | ⬜ | Pending legal final review |
 
 ---
 
-## 3. Content Pipeline (Scalable)
+## 3. P1: Content & AI Orchestration
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Google-Sheet → Firestore CMS for questions | Tools | ⬜ | Designers deploy in 60 s |
-| Narrative YAML + Mustache hot-load | Tools | ⬜ | Writer drop |
-| Guardian AI pattern JSON schema | Game | ✅ | BattleEngine logic uses pattern sets |
+| **Gemini 3 Flash** (Content Gen) | AI | ✅ | Dynamic question pipeline in geminiService |
+| **Gemini 2.5 Flash Image** (Relics) | AI | ✅ | Artifact generation system implemented |
+| **Veo 3.1 Visions** (Restoration Video) | AI | ✅ | Sanctuary "Watch Vision" flow (PRD 5.2) |
+| **Guardian AI Patterns** (JSON Schema) | Game | ✅ | BattleEngine logic uses weighted patterns |
 
 ---
 
-## 4. Monetisation (Ethical)
+## 4. P2: Monetization & Growth
 | Tier | Price | Status | Tech |
 |---|---|---|---|
 | Free chapters 1–3 | $0 | ✅ | Standard game flow |
-| Home pass (all ch, 3 pets) | $4.99/mo | ⬜ | Stripe + Apple Pay |
-| Classroom seat | $2.50/mo | ⬜ | Stripe invoice + LTI 1.3 |
+| Home pass (all ch, 3 pets) | $4.99/mo | ⬜ | Stripe + Apple Pay integration pending |
+| Classroom seat | $2.50/mo | ⬜ | B2B Portal pending |
 
 ---
 
-## 5. Ops & Observability
-| Task | Owner | Status | Notes |
-|---|---|---|---|
-| Sentry React crash alerts | Ops | ⬜ | Slack `#phonics-alerts` |
-| Custom metric: `voice_timeout_rate` > 5 % page | Ops | ⬜ | Prometheus |
-| Save SHA-256 corruption check | Ops | ⬜ | Auto-recover backup |
-| p95 Gemini latency < 800 ms | Ops | ⬜ | Cloud Run autoscale |
-
----
-
-## 6. Device & Edge Cases
-| Device | Test | Status | Notes |
-|---|---|---|---|
-| iPad 6th gen (iOS 15) | Mic + WebGL | ⬜ | School staple |
-| Crappy Android (2 GB RAM) | 30-tab memory | ⬜ | Slow chromebook equiv. |
-| School Chromebook | Offline audio fail | ⬜ | Cache `.mp3` fallbacks |
-
----
-
-## 7. 4-Week Sprint Roadmap
+## 5. Upcoming Sprints (4-Week Roadmap)
 | Week | Goal | Status |
 |---|---|---|
-| W1 Harden | Beta blockers closed | ✅ |
-| W2 Stick | Daily spin, streak, pet | ✅ |
-| W3 Legal | COPPA, privacy, teacher FAQ | ⬜ |
-| W4 Soft | Private beta 100 kids | ⬜ |
-
----
-
-## 8. Ship Check (Release Tag)
-- [ ] Version bump `package.json` → `1.0.0-beta.0`  
-- [ ] Tag & changelog `git tag -a v1.0.0-beta.0 -m "Beta soft-launch"`  
-- [ ] Upload to TestFlight + Google Closed Testing  
-- [ ] Send teacher beta invite link (Google Form)  
-- [ ] Schedule retrospective 2 weeks post-launch
+| **W1 Harden** | Beta blockers & Audio fixes | ✅ |
+| **W2 Stick** | Daily spin, streak, pet system | ✅ |
+| **W3 Data** | Teacher/Parent insights & CSVs | ✅ |
+| **W4 Launch** | Private beta for 100 families | ⬜ |
 
 ---
 

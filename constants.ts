@@ -1,7 +1,7 @@
 
-import { NPC, Decoration } from './types';
+import { NPC, Decoration, LootItem } from './types';
 
-export const APP_VERSION = '2.1.0';
+export const APP_VERSION = '2.2.0';
 export const INITIAL_HP = 100;
 export const DAMAGE_PER_HIT = 20;
 export const STREAK_BONUS_THRESHOLD = 3;
@@ -84,8 +84,8 @@ export const NPCS: NPC[] = [
     id: 'borin',
     name: 'Borin the Blacksmith',
     title: 'Essence Smith',
-    bonus: '-15% Upgrade Cost',
-    description: 'Forges resonance into raw power. He makes strengthening your attributes cheaper.',
+    bonus: 'Unlock Forging',
+    description: 'Forges resonance into raw power. He creates powerful gear from shards and dust.',
     icon: '⚒️',
     unlockedAfter: 'ch2'
   },
@@ -106,6 +106,44 @@ export const NPCS: NPC[] = [
     description: 'He finds the cracks in the shadows. Your first correct spell will always strike a weak point.',
     icon: '🏹',
     unlockedAfter: 'ch4'
+  }
+];
+
+export interface ForgeRecipe {
+  id: string;
+  result: LootItem;
+  costs: {
+    crystals: number;
+    materials: { id: string, amount: number }[];
+  };
+}
+
+export const FORGE_RECIPES: ForgeRecipe[] = [
+  {
+    id: 'recipe-staff',
+    result: { 
+      id: 'crystal-staff', 
+      name: 'Resonance Staff', 
+      type: 'equipment', 
+      rarity: 'rare', 
+      icon: '🪄', 
+      description: 'Increases Reading Power by 8.',
+      stats: { readingPower: 8 }
+    },
+    costs: { crystals: 100, materials: [{ id: 'whisper-dust', amount: 3 }] }
+  },
+  {
+    id: 'recipe-armor',
+    result: { 
+      id: 'echo-plate', 
+      name: 'Echo Plate', 
+      type: 'equipment', 
+      rarity: 'rare', 
+      icon: '🛡️', 
+      description: 'Increases Resilience by 10.',
+      stats: { resilience: 10 }
+    },
+    costs: { crystals: 120, materials: [{ id: 'phonics-shard', amount: 5 }] }
   }
 ];
 

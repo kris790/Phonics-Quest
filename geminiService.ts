@@ -3,6 +3,7 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { DigraphQuestion, Artifact } from "./types";
 import { FALLBACK_QUESTIONS } from "./constants";
 
+// Basic instance for standard text tasks
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 export const fetchQuestions = async (level: number): Promise<DigraphQuestion[]> => {
@@ -57,6 +58,7 @@ export const getNarrativeFeedback = async (isCorrect: boolean, word: string, str
 };
 
 export const generateArtifactImage = async (chapterName: string, guardianName: string): Promise<Artifact> => {
+  // Fresh instance before generating high-quality image content
   const dynamicAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   // 1. Get description
@@ -99,6 +101,7 @@ export const generateArtifactImage = async (chapterName: string, guardianName: s
 };
 
 export const generateRestorationVideo = async (chapterName: string): Promise<string> => {
+  // Fresh instance before generating video as per guidelines
   const dynamicAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
   
   let operation = await dynamicAi.models.generateVideos({
@@ -117,6 +120,7 @@ export const generateRestorationVideo = async (chapterName: string): Promise<str
   }
 
   const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
+  // Append key when fetching video bytes
   const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
   const blob = await response.blob();
   return URL.createObjectURL(blob);

@@ -3,10 +3,12 @@ import { GoogleGenAI, Type, Modality } from "@google/genai";
 import { DigraphQuestion, Artifact } from "../types";
 import { FALLBACK_QUESTIONS } from "../constants";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+// Helper to get AI instance safely
+const getAI = () => new GoogleGenAI({ apiKey: process.env?.API_KEY || "" });
 
 export const fetchQuestions = async (level: number): Promise<DigraphQuestion[]> => {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
       contents: `Generate 5 digraph word puzzles for children at level ${level}. Focus on digraphs like sh, ch, th, wh, ph, ck, qu, kn, wr. Each puzzle needs a word with the digraph replaced by underscores, the correct digraph, 4 unique options including the correct one, and a simple meaning.`,
@@ -40,26 +42,26 @@ export const fetchQuestions = async (level: number): Promise<DigraphQuestion[]> 
   }
 };
 
-export const getNarrativeFeedback = async (isCorrect: boolean, word: string, streak: number): Promise<{ text: string, audio?: string }> => {
+export const getNarrativeFeedback = async (isCorrect: boolean, word: string, streak: number, voice: string = 'Kore'): Promise<{ text: string, audio?: string }> => {
     try {
+        const ai = getAI();
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
             contents: `Write a very short (max 12 words) encouraging battle narration for a child playing a digraph learning game. The child just got a word ${isCorrect ? 'RIGHT' : 'WRONG'} for the word "${word}". Current streak is ${streak}. Make it sound epic and crystal-cave themed.`,
         });
         const text = response.text || (isCorrect ? "Crystal power surges!" : "The shadow thickens...");
-        const audio = await generateSpeech(text);
+        const audio = await generateSpeech(text, voice);
         return { text, audio };
     } catch (error) {
         const text = isCorrect ? "Excellent hit!" : "Watch out for the shadow!";
-        const audio = await generateSpeech(text);
+        const audio = await generateSpeech(text, voice);
         return { text, audio };
     }
 };
 
 export const generateArtifactImage = async (chapterName: string, guardianName: string): Promise<Artifact> => {
-  const dynamicAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const dynamicAi = getAI();
   
-  // 1. Get description
   const descResponse = await dynamicAi.models.generateContent({
     model: 'gemini-3-flash-preview',
     contents: `Describe a unique, beautiful magical relic found in ${chapterName} after defeating ${guardianName}. It should be crystalline and symbolic of phonics/voice. Max 20 words for the description and give it a name.`
@@ -68,7 +70,6 @@ export const generateArtifactImage = async (chapterName: string, guardianName: s
   const text = descResponse.text || "The Crystal of Clarity";
   const name = text.split('\n')[0].replace(/[^a-zA-Z0-9 ]/g, '').substring(0, 30);
   
-  // 2. Generate Image
   const imgResponse = await dynamicAi.models.generateContent({
     model: 'gemini-2.5-flash-image',
     contents: {
@@ -82,10 +83,12 @@ export const generateArtifactImage = async (chapterName: string, guardianName: s
   });
 
   let imageUrl = "";
-  for (const part of imgResponse.candidates[0].content.parts) {
-    if (part.inlineData) {
-      imageUrl = `data:image/png;base64,${part.inlineData.data}`;
-      break;
+  if (imgResponse.candidates?.[0]?.content?.parts) {
+    for (const part of imgResponse.candidates[0].content.parts) {
+      if (part.inlineData) {
+        imageUrl = `data:image/png;base64,${part.inlineData.data}`;
+        break;
+      }
     }
   }
 
@@ -99,7 +102,7 @@ export const generateArtifactImage = async (chapterName: string, guardianName: s
 };
 
 export const generateRestorationVideo = async (chapterName: string): Promise<string> => {
-  const dynamicAi = new GoogleGenAI({ apiKey: process.env.API_KEY });
+  const dynamicAi = getAI();
   
   let operation = await dynamicAi.models.generateVideos({
     model: 'veo-3.1-fast-generate-preview',
@@ -117,13 +120,14 @@ export const generateRestorationVideo = async (chapterName: string): Promise<str
   }
 
   const downloadLink = operation.response?.generatedVideos?.[0]?.video?.uri;
-  const response = await fetch(`${downloadLink}&key=${process.env.API_KEY}`);
+  const response = await fetch(`${downloadLink}&key=${process.env?.API_KEY || ""}`);
   const blob = await response.blob();
   return URL.createObjectURL(blob);
 };
 
 export const generateSpeech = async (text: string, voice: string = 'Kore'): Promise<string | undefined> => {
   try {
+    const ai = getAI();
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text }] }],

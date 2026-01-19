@@ -1,18 +1,20 @@
 
 import React from 'react';
 import { GameState, RootState, BattleState } from '../types';
+import VoiceGate from './VoiceGate';
+import COPPALiveDisclaimer from './COPPALiveDisclaimer';
+import { VoiceStatus } from '../hooks/useVoiceSession';
 
 interface OverlayProps {
   gameState: GameState;
   rootState: RootState;
   onSelect: (option: string) => void;
-  // Made optional as it's not currently used in the component and caused a parent error
-  onBattleEnd?: (victory: boolean, rewards?: any) => void;
   onPronounce: () => void;
   onVoiceStart?: () => void;
+  voiceStatus: VoiceStatus;
+  onDismissDisclaimer?: () => void;
   onUsePowerup?: (type: keyof BattleState['availablePowerups']) => void;
   onDebugVictory?: () => void;
-  isListening?: boolean;
 }
 
 const Overlay: React.FC<OverlayProps> = ({ 
@@ -21,9 +23,10 @@ const Overlay: React.FC<OverlayProps> = ({
   onSelect, 
   onPronounce,
   onVoiceStart,
+  voiceStatus,
+  onDismissDisclaimer,
   onUsePowerup,
-  onDebugVictory,
-  isListening 
+  onDebugVictory
 }) => {
   if (gameState.status === 'victory' || gameState.status === 'defeat') {
     return null;
@@ -39,9 +42,12 @@ const Overlay: React.FC<OverlayProps> = ({
   const activeHint = rootState.battle.activeHint;
   const correctOption = gameState.currentQuestion?.correctDigraph;
   const isDebugMode = rootState.progression.settings.debugMode;
+  const showDisclaimer = !rootState.progression.hasSeenDisclaimer && voiceStatus === 'listening';
 
   return (
     <div className="relative z-30 mt-auto px-6 pb-12 flex flex-col gap-4">
+      {showDisclaimer && onDismissDisclaimer && <COPPALiveDisclaimer onDismiss={onDismissDisclaimer} />}
+      
       {/* Powerups Bar */}
       <div className="flex justify-between gap-2 px-2">
         {powerups.map((p) => (
@@ -84,10 +90,10 @@ const Overlay: React.FC<OverlayProps> = ({
               {onVoiceStart && (
                 <button 
                   onClick={onVoiceStart}
-                  className={`transition-colors ${isListening ? 'text-damage-red animate-pulse' : 'text-primary/60 hover:text-primary'}`}
+                  className={`transition-colors ${voiceStatus === 'listening' ? 'text-damage-red animate-pulse' : 'text-primary/60 hover:text-primary'}`}
                   title="Speak Answer"
                 >
-                  <span className="material-symbols-outlined">{isListening ? 'mic' : 'mic_none'}</span>
+                  <span className="material-symbols-outlined">{voiceStatus === 'listening' ? 'mic' : 'mic_none'}</span>
                 </button>
               )}
             </div>
@@ -117,12 +123,18 @@ const Overlay: React.FC<OverlayProps> = ({
               );
             })}
           </div>
+
+          <VoiceGate 
+            status={voiceStatus} 
+            onRetry={onVoiceStart || (() => {})} 
+            onTapMode={() => {}} // User is already in tap mode if they ignore it
+          />
         </div>
       )}
 
       {/* Narrative Box */}
       <div className="bg-background-dark/60 backdrop-blur-md rounded-2xl p-4 border border-white/5 min-h-[64px] flex items-center justify-center">
-        {isListening ? (
+        {voiceStatus === 'listening' ? (
           <div className="flex flex-col items-center gap-2">
             <div className="flex gap-1">
               <div className="w-1 h-4 bg-primary animate-[bounce_0.5s_infinite_0s]"></div>
