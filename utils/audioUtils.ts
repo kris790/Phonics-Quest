@@ -1,6 +1,10 @@
 
 let globalAudioContext: AudioContext | null = null;
 
+/**
+ * Ensures a single AudioContext is used across the app.
+ * Fixed for iOS Safari: Contexts created outside of user gestures start suspended.
+ */
 export function getAudioContext(): AudioContext {
   if (!globalAudioContext) {
     globalAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ 
@@ -10,21 +14,35 @@ export function getAudioContext(): AudioContext {
   return globalAudioContext;
 }
 
+/**
+ * Critical for iOS: Call this on every 'click' or 'touchstart' event.
+ */
 export async function resumeAudioContext() {
   const ctx = getAudioContext();
-  if (ctx.state === 'suspended') {
-    await ctx.resume();
+  // Fix: TypeScript error regarding union overlap. Cast to any to safely check platform-specific states.
+  if ((ctx.state as any) === 'suspended' || (ctx.state as any) === 'interrupted') {
+    try {
+      await ctx.resume();
+      console.log("AudioContext resumed successfully.");
+    } catch (err) {
+      console.warn("Failed to resume AudioContext:", err);
+    }
   }
 }
 
 export function decodeBase64(base64: string): Uint8Array {
-  const binaryString = atob(base64);
-  const len = binaryString.length;
-  const bytes = new Uint8Array(len);
-  for (let i = 0; i < len; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
+  try {
+    const binaryString = atob(base64);
+    const len = binaryString.length;
+    const bytes = new Uint8Array(len);
+    for (let i = 0; i < len; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes;
+  } catch (e) {
+    console.error("Base64 decoding failed:", e);
+    return new Uint8Array(0);
   }
-  return bytes;
 }
 
 export async function decodeAudioData(
@@ -49,9 +67,12 @@ export async function decodeAudioData(
 export async function playTTS(base64Audio: string) {
   try {
     const ctx = getAudioContext();
+    // Re-verify context is active before play
     await resumeAudioContext();
     
     const rawData = decodeBase64(base64Audio);
+    if (rawData.length === 0) return;
+
     const audioBuffer = await decodeAudioData(rawData, ctx, 24000, 1);
     
     const source = ctx.createBufferSource();

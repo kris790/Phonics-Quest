@@ -1,17 +1,18 @@
 
 import React from 'react';
-import { GameState, BattleState } from '../types';
+import { GameState, BattleState, ProgressionState } from '../types';
 
 interface HUDProps {
   gameState: GameState;
   battleState: BattleState;
+  progression?: ProgressionState;
   onReset: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
   onOpenSettings: () => void;
 }
 
-const HUD: React.FC<HUDProps> = ({ gameState, battleState, onReset, isMuted, onToggleMute, onOpenSettings }) => {
+const HUD: React.FC<HUDProps> = ({ gameState, battleState, progression, onReset, isMuted, onToggleMute, onOpenSettings }) => {
   const getEffectIcon = (type: string) => {
     switch (type) {
       case 'confusion': return 'question_mark';
@@ -32,6 +33,13 @@ const HUD: React.FC<HUDProps> = ({ gameState, battleState, onReset, isMuted, onT
             <span className="material-symbols-outlined text-primary text-xl">auto_stories</span>
             <span className="font-bold text-sm tracking-widest text-white uppercase italic">Echoes of Clarity</span>
           </div>
+          {/* Daily Streak Flame */}
+          {progression && progression.dailyStreak > 0 && (
+            <div className="bg-orange-500/20 border border-orange-500/40 rounded-lg px-2 py-1 flex items-center gap-1 shadow-[0_0_10px_rgba(249,115,22,0.2)]">
+               <span className="material-symbols-outlined text-orange-500 text-sm animate-pulse">local_fire_department</span>
+               <span className="text-[10px] font-black text-white">{progression.dailyStreak}</span>
+            </div>
+          )}
           {/* Guardian Effects */}
           <div className="flex gap-1">
             {battleState.guardianStatusEffects.map((eff, i) => (

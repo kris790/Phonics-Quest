@@ -6,7 +6,8 @@ interface OverlayProps {
   gameState: GameState;
   rootState: RootState;
   onSelect: (option: string) => void;
-  onBattleEnd: (victory: boolean, rewards?: any) => void;
+  // Made optional as it's not currently used in the component and caused a parent error
+  onBattleEnd?: (victory: boolean, rewards?: any) => void;
   onPronounce: () => void;
   onVoiceStart?: () => void;
   onUsePowerup?: (type: keyof BattleState['availablePowerups']) => void;

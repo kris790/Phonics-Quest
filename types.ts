@@ -24,6 +24,25 @@ export interface DigraphAccuracy {
   correct: number;
 }
 
+export type PetRarity = 'common' | 'rare' | 'epic';
+
+export interface Pet {
+  id: string;
+  name: string;
+  rarity: PetRarity;
+  icon: string;
+  buffDescription: string;
+  buffType: 'damage_reduction' | 'timeout_extension' | 'crit_boost';
+}
+
+export interface Egg {
+  id: string;
+  rarity: PetRarity;
+  incubationProgress: number;
+  incubationTarget: number;
+  isReady: boolean;
+}
+
 export interface ProgressionState {
   level: number;
   xp: number;
@@ -40,6 +59,12 @@ export interface ProgressionState {
   hasSeenTutorial: boolean;
   accuracyData: Record<string, DigraphAccuracy>;
   settings: GameSettings;
+  pets: Pet[];
+  activePetId: string | null;
+  activeEggs: Egg[];
+  lastSpinTimestamp: number | null;
+  dailyStreak: number;
+  lastLoginDate: number | null;
 }
 
 export type StatusEffectType = 
@@ -200,7 +225,7 @@ export interface Decoration {
 
 export interface ActivityEntry {
   id: string;
-  type: 'npc_rescued' | 'reward_claimed' | 'decoration_placed' | 'battle_victory' | 'quest_complete' | 'level_up' | 'artifact_forged';
+  type: 'npc_rescued' | 'reward_claimed' | 'decoration_placed' | 'battle_victory' | 'quest_complete' | 'level_up' | 'artifact_forged' | 'pet_hatched';
   description: string;
   timestamp: number;
 }
