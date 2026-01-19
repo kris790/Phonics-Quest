@@ -13,6 +13,26 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ progression, onClose 
   const totalCorrect = accuracyArray.reduce((sum, d) => sum + d.correct, 0);
   const overallAccuracy = totalAttempts > 0 ? Math.round((totalCorrect / totalAttempts) * 100) : 0;
 
+  const exportCSV = () => {
+    const headers = ['Digraph', 'Attempts', 'Correct', 'Accuracy'];
+    const rows = accuracyArray.map(d => [
+      d.digraph,
+      d.attempts,
+      d.correct,
+      `${Math.round((d.correct / d.attempts) * 100)}%`
+    ]);
+    const csvContent = [headers, ...rows].map(e => e.join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `phonics_quest_report_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
     <div className="absolute inset-0 z-[100] bg-background-dark p-6 flex flex-col animate-fadeIn overflow-y-auto pb-24 custom-scrollbar">
       <header className="flex justify-between items-center mb-8">
@@ -37,9 +57,15 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ progression, onClose 
       </div>
 
       <section className="space-y-6">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-white font-black uppercase text-xs tracking-[0.4em]">Digraph Mastery</h2>
-          <div className="h-[1px] flex-1 bg-white/10"></div>
+          <button 
+            onClick={exportCSV}
+            className="flex items-center gap-2 px-3 py-1 bg-primary/10 border border-primary/20 rounded-lg text-[10px] font-black text-primary uppercase tracking-widest hover:bg-primary/20 transition-all"
+          >
+            <span className="material-symbols-outlined text-sm">download</span>
+            Export CSV
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -71,9 +97,15 @@ const ParentDashboard: React.FC<ParentDashboardProps> = ({ progression, onClose 
          <div className="bg-primary/5 border border-primary/20 rounded-2xl p-5">
             <h3 className="text-primary font-black uppercase text-[10px] tracking-widest mb-2">Learning Insights</h3>
             <p className="text-xs text-white/70 italic leading-relaxed">
-              Caelum is currently focusing on <span className="text-white font-bold">"{accuracyArray[0]?.digraph || 'Sh'}"</span> sounds. 
-              Combat performance suggests they respond best to visual digraph hints. 
-              The most challenging sound recently was <span className="text-white font-bold">"{accuracyArray[accuracyArray.length-1]?.digraph || 'Ph'}"</span>.
+              {accuracyArray.length > 0 ? (
+                <>
+                  Your child is showing strong proficiency with <span className="text-white font-bold">"{accuracyArray[0]?.digraph.toUpperCase()}"</span> sounds. 
+                  Recent sessions indicate a focus on rhythmic patterns. Consider practicing 
+                  <span className="text-white font-bold"> "{accuracyArray[accuracyArray.length-1]?.digraph.toUpperCase()}"</span> words together to bridge current gaps.
+                </>
+              ) : (
+                "Complete more battles to unlock detailed learning insights and patterns."
+              )}
             </p>
          </div>
       </section>

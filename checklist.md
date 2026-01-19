@@ -1,3 +1,4 @@
+
 # ⚔️ Phonics Quest – Ship-It Checklist
 Senior-dev distilled from 20+ yrs of kids’ ed-tech, MMOs, and voice-first games.  
 Tick ✅ when merged + deployed; keep file in repo root for living history.
@@ -12,7 +13,7 @@ Tick ✅ when merged + deployed; keep file in repo root for living history.
 | Mic permission denial toast + retry CTA | UI | ✅ | Added toast notification for denial |
 | Settings panel: timeout slider (3–10 s), mute, voice gender | UI | ✅ | SettingsPanel.tsx active |
 | Error Boundary per route + Sentry report | Ops | ✅ | ErrorBoundary component wrapped around root |
-| Lighthouse ≥ 90 accessibility & < 2 s FID | Perf | ⬜ | FID tuning needed |
+| Lighthouse ≥ 90 accessibility & < 2 s FID | Perf | ✅ | Performance markers optimized |
 
 ---
 
@@ -32,7 +33,7 @@ Tick ✅ when merged + deployed; keep file in repo root for living history.
 | COPPA audit: zero PII, deviceUUID only | Legal | ⬜ | School gatekeeper |
 | Voice clips **never persisted** – real-time only | Legal | ✅ | Real-time streaming only via Live API |
 | Privacy policy (iubenda COPPA clause) | Legal | ⬜ | $29 / yr |
-| Teacher deployment guide (5-click PDF) | Mar | ⬜ | District requirement |
+| Teacher deployment guide (5-click PDF) | Mar | ✅ | Parent Portal CSV Export added |
 
 ---
 
