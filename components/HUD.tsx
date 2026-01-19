@@ -8,9 +8,10 @@ interface HUDProps {
   onReset: () => void;
   isMuted: boolean;
   onToggleMute: () => void;
+  onOpenSettings: () => void;
 }
 
-const HUD: React.FC<HUDProps> = ({ gameState, battleState, onReset, isMuted, onToggleMute }) => {
+const HUD: React.FC<HUDProps> = ({ gameState, battleState, onReset, isMuted, onToggleMute, onOpenSettings }) => {
   const getEffectIcon = (type: string) => {
     switch (type) {
       case 'confusion': return 'question_mark';
@@ -43,10 +44,10 @@ const HUD: React.FC<HUDProps> = ({ gameState, battleState, onReset, isMuted, onT
         </div>
         <div className="flex gap-2">
           <button 
-            onClick={onToggleMute}
+            onClick={onOpenSettings}
             className="bg-background-dark/60 backdrop-blur-md p-2 rounded-lg border border-white/10 text-white hover:bg-white/10 transition-colors"
           >
-            <span className="material-symbols-outlined">{isMuted ? 'volume_off' : 'volume_up'}</span>
+            <span className="material-symbols-outlined">settings</span>
           </button>
           <button 
             onClick={onReset}

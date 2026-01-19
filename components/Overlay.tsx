@@ -10,6 +10,7 @@ interface OverlayProps {
   onPronounce: () => void;
   onVoiceStart?: () => void;
   onUsePowerup?: (type: keyof BattleState['availablePowerups']) => void;
+  onDebugVictory?: () => void;
   isListening?: boolean;
 }
 
@@ -20,6 +21,7 @@ const Overlay: React.FC<OverlayProps> = ({
   onPronounce,
   onVoiceStart,
   onUsePowerup,
+  onDebugVictory,
   isListening 
 }) => {
   if (gameState.status === 'victory' || gameState.status === 'defeat') {
@@ -35,6 +37,7 @@ const Overlay: React.FC<OverlayProps> = ({
 
   const activeHint = rootState.battle.activeHint;
   const correctOption = gameState.currentQuestion?.correctDigraph;
+  const isDebugMode = rootState.progression.settings.debugMode;
 
   return (
     <div className="relative z-30 mt-auto px-6 pb-12 flex flex-col gap-4">
@@ -54,6 +57,15 @@ const Overlay: React.FC<OverlayProps> = ({
             </div>
           </button>
         ))}
+        {isDebugMode && (
+          <button
+            onClick={onDebugVictory}
+            className="flex-1 flex flex-col items-center gap-1 bg-amber-500/20 border border-amber-500/40 rounded-xl py-2 hover:bg-amber-500/30 text-amber-500"
+          >
+            <span className="material-symbols-outlined text-xl">skip_next</span>
+            <span className="text-[8px] font-black uppercase tracking-widest">Debug Win</span>
+          </button>
+        )}
       </div>
 
       {/* Current Question */}

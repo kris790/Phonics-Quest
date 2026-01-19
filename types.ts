@@ -1,7 +1,7 @@
 
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'heroic';
 export type BattlePhase = 'intro' | 'player-turn' | 'spell-cast' | 'guardian-turn' | 'round-end' | 'victory' | 'defeat';
-export type AppState = 'world-map' | 'battle' | 'character-sheet' | 'quest-log' | 'sanctuary' | 'hero-room' | 'ledger';
+export type AppState = 'world-map' | 'battle' | 'character-sheet' | 'quest-log' | 'sanctuary' | 'hero-room' | 'ledger' | 'settings' | 'parent-dashboard';
 
 export interface Artifact {
   id: string;
@@ -9,6 +9,19 @@ export interface Artifact {
   description: string;
   imageUrl: string;
   timestamp: number;
+}
+
+export interface GameSettings {
+  ttsVoice: string;
+  voiceTimeout: number;
+  isMuted: boolean;
+  debugMode: boolean;
+}
+
+export interface DigraphAccuracy {
+  digraph: string;
+  attempts: number;
+  correct: number;
 }
 
 export interface ProgressionState {
@@ -21,9 +34,12 @@ export interface ProgressionState {
   unlockedNPCs: string[];
   restorationPoints: number;
   restorationLevel: number;
-  decorations: Record<string, string>; // slot -> decorationId
+  decorations: Record<string, string>;
   artifacts: Artifact[];
   recentActivities: ActivityEntry[];
+  hasSeenTutorial: boolean;
+  accuracyData: Record<string, DigraphAccuracy>;
+  settings: GameSettings;
 }
 
 export type StatusEffectType = 

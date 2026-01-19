@@ -36,7 +36,7 @@ const NPCStall: React.FC<{ npc: NPC; isUnlocked: boolean }> = ({ npc, isUnlocked
  * LEGO COMPONENT: Restoration Meter
  * Single responsibility: Display meta-progression towards the next reward.
  */
-const RestorationMeter: React.FC<{ progress: number; level: number; onClaim: () => void; isReady: boolean; onViewLedger: () => void }> = ({ progress, level, onClaim, isReady, onViewLedger }) => (
+const RestorationMeter: React.FC<{ progress: number; level: number; onClaim: () => void; isReady: boolean; onViewLedger: () => void; onOpenParent: () => void }> = ({ progress, level, onClaim, isReady, onViewLedger, onOpenParent }) => (
   <section className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-8 relative overflow-hidden group">
     <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-[60px] rounded-full group-hover:bg-primary/20 transition-all"></div>
     <div className="relative z-10">
@@ -45,16 +45,21 @@ const RestorationMeter: React.FC<{ progress: number; level: number; onClaim: () 
           <h2 className="text-white font-black uppercase text-xs tracking-widest mb-1 opacity-60">Restoration Level</h2>
           <p className="text-4xl font-black italic text-primary drop-shadow-[0_0_15px_#0ddff2]">LV {level}</p>
         </div>
-        <div className="text-right">
+        <div className="text-right flex flex-col items-end gap-2">
           <button 
             onClick={onViewLedger}
-            className="mb-2 flex items-center gap-1 text-[9px] font-black text-primary uppercase tracking-widest hover:brightness-125 transition-all"
+            className="flex items-center gap-1 text-[9px] font-black text-primary uppercase tracking-widest hover:brightness-125 transition-all"
           >
             <span className="material-symbols-outlined text-xs">assessment</span>
             Kingdom Report
           </button>
-          <span className="text-[10px] font-black text-white/40 uppercase tracking-widest">To Next Cache</span>
-          <p className="text-white font-bold tabular-nums">{progress}/100</p>
+          <button 
+            onClick={onOpenParent}
+            className="flex items-center gap-1 text-[9px] font-black text-amber-400 uppercase tracking-widest hover:brightness-125 transition-all"
+          >
+            <span className="material-symbols-outlined text-xs">parental_control</span>
+            Parent Portal
+          </button>
         </div>
       </div>
       
@@ -81,9 +86,10 @@ interface SanctuaryProps {
   progression: RootState['progression'];
   onClaimReward: () => void;
   onViewLedger: () => void;
+  onOpenParentDashboard: () => void;
 }
 
-const Sanctuary: React.FC<SanctuaryProps> = ({ progression, onClaimReward, onViewLedger }) => {
+const Sanctuary: React.FC<SanctuaryProps> = ({ progression, onClaimReward, onViewLedger, onOpenParentDashboard }) => {
   const restorationProgress = (progression.restorationPoints % 100);
   const isRewardReady = progression.restorationPoints >= 100;
 
@@ -100,6 +106,7 @@ const Sanctuary: React.FC<SanctuaryProps> = ({ progression, onClaimReward, onVie
         onClaim={onClaimReward} 
         isReady={isRewardReady}
         onViewLedger={onViewLedger}
+        onOpenParent={onOpenParentDashboard}
       />
 
       <section className="space-y-4">

@@ -11,7 +11,10 @@ import KingdomLedger from './components/KingdomLedger';
 import VictoryScreen from './components/battle/VictoryScreen';
 import DefeatScreen from './components/battle/DefeatScreen';
 import AudioEngine from './components/AudioEngine';
-import { RootState, BattleState, AnimationState, PhonicsTask, AppState, Chapter, Attributes, Quest, ActivityEntry, Artifact } from './types';
+import SettingsPanel from './components/SettingsPanel';
+import ParentDashboard from './components/ParentDashboard';
+import TutorialOverlay from './components/TutorialOverlay';
+import { RootState, BattleState, AnimationState, PhonicsTask, AppState, Chapter, Attributes, Quest, ActivityEntry, Artifact, GameSettings } from './types';
 import { BattleEngine } from './battleEngine';
 import { fetchQuestions, getNarrativeFeedback, generateSpeech } from './services/geminiService';
 import { playTTS, resumeAudioContext } from './utils/audioUtils';
@@ -20,8 +23,7 @@ import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
 import { calculateBattleRewards } from './utils/rewardsCalculator';
 import { generateSmartId } from './utils/rewardUtils';
 
-const SAVE_KEY = 'phonics_quest_save_v3';
-const AUDIO_MUTE_KEY = 'phonics_quest_audio_mute';
+const SAVE_KEY = 'phonics_quest_save_v3_settings';
 
 type Action = 
   | { type: 'INIT_BATTLE'; tasks: PhonicsTask[]; chapter: Chapter }
@@ -40,9 +42,20 @@ type Action =
   | { type: 'CLAIM_QUEST_REWARD'; questId: string }
   | { type: 'USE_POWERUP'; powerupType: keyof BattleState['availablePowerups'] }
   | { type: 'LOG_ACTIVITY'; log: Omit<ActivityEntry, 'id' | 'timestamp'> }
+  | { type: 'UPDATE_SETTINGS'; updates: Partial<GameSettings> }
+  | { type: 'RECORD_ATTEMPT'; digraph: string; isCorrect: boolean }
+  | { type: 'SET_TUTORIAL_SEEN' }
+  | { type: 'INSTANT_VICTORY' }
   | { type: 'RESET_GAME' }
   | { type: 'LOAD_SAVE'; savedState: Partial<RootState> }
   | { type: 'SELECT_CHAPTER'; chapterId: string };
+
+const initialSettings: GameSettings = {
+  ttsVoice: 'Kore',
+  voiceTimeout: 6000,
+  isMuted: false,
+  debugMode: false
+};
 
 const initialState: RootState = {
   view: 'world-map',
@@ -59,7 +72,10 @@ const initialState: RootState = {
     restorationLevel: 0,
     decorations: {},
     artifacts: [],
-    recentActivities: []
+    recentActivities: [],
+    hasSeenTutorial: false,
+    accuracyData: {},
+    settings: initialSettings
   },
   quests: { 
     activeQuests: [
@@ -83,6 +99,8 @@ function rootReducer(state: RootState, action: Action): RootState {
       };
     case 'UPDATE_BATTLE':
       return { ...state, battle: { ...state.battle, ...action.state } };
+    case 'INSTANT_VICTORY':
+      return { ...state, battle: { ...state.battle, guardianHealth: 0, phase: 'victory' } };
     case 'USE_POWERUP':
       return { ...state, battle: BattleEngine.usePowerup(state.battle, action.powerupType) };
     case 'SET_PHASE':
@@ -93,6 +111,15 @@ function rootReducer(state: RootState, action: Action): RootState {
       return { ...state, view: action.view };
     case 'SELECT_CHAPTER':
       return { ...state, currentChapterId: action.chapterId };
+    case 'UPDATE_SETTINGS':
+      return { ...state, progression: { ...state.progression, settings: { ...state.progression.settings, ...action.updates } } };
+    case 'RECORD_ATTEMPT': {
+      const data = state.progression.accuracyData[action.digraph] || { digraph: action.digraph, attempts: 0, correct: 0 };
+      const updatedData = { ...data, attempts: data.attempts + 1, correct: action.isCorrect ? data.correct + 1 : data.correct };
+      return { ...state, progression: { ...state.progression, accuracyData: { ...state.progression.accuracyData, [action.digraph]: updatedData } } };
+    }
+    case 'SET_TUTORIAL_SEEN':
+      return { ...state, progression: { ...state.progression, hasSeenTutorial: true } };
     case 'ADD_XP': {
       let newXp = state.progression.xp + action.amount;
       let newLevel = state.progression.level;
@@ -283,10 +310,11 @@ const App: React.FC = () => {
   const [animationState, setAnimationState] = useState<AnimationState>('idle');
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
-  const [isMuted, setIsMuted] = useState(() => localStorage.getItem(AUDIO_MUTE_KEY) === 'true');
   const [isStarted, setIsStarted] = useState(false);
   const liveSessionRef = useRef<any>(null);
   const lastAudioPlayedRef = useRef<string | null>(null);
+
+  const isMuted = state.progression.settings.isMuted;
 
   useEffect(() => {
     const saved = localStorage.getItem(SAVE_KEY);
@@ -302,8 +330,6 @@ const App: React.FC = () => {
     const saveState = { progression: state.progression, chapters: state.chapters, quests: state.quests, currentChapterId: state.currentChapterId };
     localStorage.setItem(SAVE_KEY, JSON.stringify(saveState));
   }, [state.progression, state.chapters, state.quests, state.currentChapterId]);
-
-  useEffect(() => { localStorage.setItem(AUDIO_MUTE_KEY, String(isMuted)); }, [isMuted]);
 
   useEffect(() => {
     const audio = state.battle.audioFeedback;
@@ -332,7 +358,7 @@ const App: React.FC = () => {
   };
 
   const speak = async (text: string) => {
-    const audioData = await generateSpeech(text);
+    const audioData = await generateSpeech(text, state.progression.settings.ttsVoice);
     if (audioData) playTTS(audioData);
   };
 
@@ -350,11 +376,24 @@ const App: React.FC = () => {
     dispatch({ type: 'SET_VIEW', view: 'world-map' });
   };
 
+  const triggerHaptic = (type: 'success' | 'fail') => {
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      if (type === 'success') {
+        navigator.vibrate(50);
+      } else {
+        navigator.vibrate([50, 50, 50]);
+      }
+    }
+  };
+
   const handleSelect = async (selected: string) => {
     if (state.battle.phase !== 'player-turn') return;
     const currentTask = state.battle.tasks[state.battle.currentTaskIndex];
     const isCorrect = selected.toLowerCase() === currentTask.correctDigraph.toLowerCase();
     
+    dispatch({ type: 'RECORD_ATTEMPT', digraph: currentTask.correctDigraph, isCorrect });
+    triggerHaptic(isCorrect ? 'success' : 'fail');
+
     const { nextState } = BattleEngine.processTurn(state.battle, isCorrect, state.progression.attributes);
     
     getNarrativeFeedback(isCorrect, currentTask.word, nextState.comboStreak).then((aiFeedback) => {
@@ -434,7 +473,7 @@ const App: React.FC = () => {
         }
       });
       liveSessionRef.current = { sessionPromise, inputCtx, stream };
-      setTimeout(stopListening, 6000);
+      setTimeout(stopListening, state.progression.settings.voiceTimeout);
     } catch (e) { console.error(e); setIsListening(false); }
   };
 
@@ -487,8 +526,19 @@ const App: React.FC = () => {
 
       {isStarted && (
         <>
+          {isStarted && !state.progression.hasSeenTutorial && (
+            <TutorialOverlay onComplete={() => dispatch({ type: 'SET_TUTORIAL_SEEN' })} />
+          )}
+
           <AudioEngine view={state.view} battlePhase={state.battle.phase} isMuted={isMuted} currentChapterId={state.currentChapterId} chapters={state.chapters} />
-          <HUD gameState={mappedGameState} battleState={state.battle} onReset={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} isMuted={isMuted} onToggleMute={() => setIsMuted(!isMuted)} />
+          <HUD 
+            gameState={mappedGameState} 
+            battleState={state.battle} 
+            onReset={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} 
+            isMuted={isMuted} 
+            onToggleMute={() => dispatch({ type: 'UPDATE_SETTINGS', updates: { isMuted: !isMuted } })}
+            onOpenSettings={() => dispatch({ type: 'SET_VIEW', view: 'settings' })}
+          />
           
           <div className="flex-1 relative overflow-hidden">
             {state.view === 'world-map' && (
@@ -533,20 +583,34 @@ const App: React.FC = () => {
                   />
                 )}
                 {state.battle.phase === 'defeat' && <DefeatScreen guardianName={currentChapter.guardian.name} tasksCompleted={state.battle.currentTaskIndex} totalTasks={state.battle.tasks.length} comboStreak={state.battle.maxComboStreak} onRetry={() => startChapter(currentChapter)} onReturnToMap={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} />}
-                {state.battle.phase !== 'victory' && state.battle.phase !== 'defeat' && <Overlay gameState={mappedGameState} rootState={state} onSelect={handleSelect} onBattleEnd={handleBattleEnd} onPronounce={() => speak(mappedGameState.currentQuestion?.word || "")} onVoiceStart={startVoiceRecognition} onUsePowerup={(type) => dispatch({ type: 'USE_POWERUP', powerupType: type })} isListening={isListening} />}
+                {state.battle.phase !== 'victory' && state.battle.phase !== 'defeat' && (
+                   <Overlay 
+                     gameState={mappedGameState} 
+                     rootState={state} 
+                     onSelect={handleSelect} 
+                     onBattleEnd={handleBattleEnd} 
+                     onPronounce={() => speak(mappedGameState.currentQuestion?.word || "")} 
+                     onVoiceStart={startVoiceRecognition} 
+                     onUsePowerup={(type) => dispatch({ type: 'USE_POWERUP', powerupType: type })} 
+                     isListening={isListening} 
+                     onDebugVictory={() => dispatch({ type: 'INSTANT_VICTORY' })}
+                   />
+                )}
               </>
             )}
 
             {state.view === 'character-sheet' && <CharacterSheet progression={state.progression} onUpgrade={(attr, cost) => dispatch({ type: 'UPGRADE_ATTRIBUTE', attribute: attr, cost })} onResetProgress={() => confirm("Reset progress?") && dispatch({ type: 'RESET_GAME' })} />}
-            {state.view === 'sanctuary' && <Sanctuary progression={state.progression} onClaimReward={() => dispatch({ type: 'CLAIM_RESTORATION_REWARD' })} onViewLedger={() => dispatch({ type: 'SET_VIEW', view: 'ledger' })} />}
+            {state.view === 'sanctuary' && <Sanctuary progression={state.progression} onClaimReward={() => dispatch({ type: 'CLAIM_RESTORATION_REWARD' })} onViewLedger={() => dispatch({ type: 'SET_VIEW', view: 'ledger' })} onOpenParentDashboard={() => dispatch({ type: 'SET_VIEW', view: 'parent-dashboard' })} />}
             {state.view === 'hero-room' && <HeroRoom progression={state.progression} onEquipDecoration={(slot, id) => dispatch({ type: 'EQUIP_DECORATION', slot, decorationId: id })} />}
             {state.view === 'quest-log' && <QuestLog quests={state.quests} onClaimQuestReward={(id) => dispatch({ type: 'CLAIM_QUEST_REWARD', questId: id })} />}
             {state.view === 'ledger' && <KingdomLedger progression={state.progression} onClose={() => dispatch({ type: 'SET_VIEW', view: 'sanctuary' })} />}
+            {state.view === 'settings' && <SettingsPanel settings={state.progression.settings} onUpdate={(u) => dispatch({ type: 'UPDATE_SETTINGS', updates: u })} onClose={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} />}
+            {state.view === 'parent-dashboard' && <ParentDashboard progression={state.progression} onClose={() => dispatch({ type: 'SET_VIEW', view: 'sanctuary' })} />}
           </div>
 
           <div className="relative z-50 h-16 bg-background-dark/95 border-t border-white/5 flex items-center justify-around px-4">
             <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} className={`material-symbols-outlined transition-colors ${state.view === 'world-map' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>map</button>
-            <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'sanctuary' })} className={`material-symbols-outlined transition-colors ${state.view === 'sanctuary' || state.view === 'ledger' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>castle</button>
+            <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'sanctuary' })} className={`material-symbols-outlined transition-colors ${state.view === 'sanctuary' || state.view === 'ledger' || state.view === 'parent-dashboard' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>castle</button>
             <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'hero-room' })} className={`material-symbols-outlined transition-colors ${state.view === 'hero-room' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>home</button>
             <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'quest-log' })} className={`material-symbols-outlined transition-colors ${state.view === 'quest-log' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>assignment</button>
             <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'character-sheet' })} className={`material-symbols-outlined transition-colors ${state.view === 'character-sheet' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>person</button>
