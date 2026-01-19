@@ -1,4 +1,22 @@
 
+let globalAudioContext: AudioContext | null = null;
+
+export function getAudioContext(): AudioContext {
+  if (!globalAudioContext) {
+    globalAudioContext = new (window.AudioContext || (window as any).webkitAudioContext)({ 
+      sampleRate: 24000 
+    });
+  }
+  return globalAudioContext;
+}
+
+export async function resumeAudioContext() {
+  const ctx = getAudioContext();
+  if (ctx.state === 'suspended') {
+    await ctx.resume();
+  }
+}
+
 export function decodeBase64(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -29,12 +47,18 @@ export async function decodeAudioData(
 }
 
 export async function playTTS(base64Audio: string) {
-  const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
-  const rawData = decodeBase64(base64Audio);
-  const audioBuffer = await decodeAudioData(rawData, ctx, 24000, 1);
-  
-  const source = ctx.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(ctx.destination);
-  source.start();
+  try {
+    const ctx = getAudioContext();
+    await resumeAudioContext();
+    
+    const rawData = decodeBase64(base64Audio);
+    const audioBuffer = await decodeAudioData(rawData, ctx, 24000, 1);
+    
+    const source = ctx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(ctx.destination);
+    source.start();
+  } catch (err) {
+    console.warn("TTS Playback failed:", err);
+  }
 }

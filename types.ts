@@ -1,7 +1,7 @@
 
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'heroic';
 export type BattlePhase = 'intro' | 'player-turn' | 'spell-cast' | 'guardian-turn' | 'round-end' | 'victory' | 'defeat';
-export type AppState = 'world-map' | 'battle' | 'character-sheet' | 'quest-log' | 'sanctuary' | 'hero-room';
+export type AppState = 'world-map' | 'battle' | 'character-sheet' | 'quest-log' | 'sanctuary' | 'hero-room' | 'ledger';
 
 export type StatusEffectType = 
   | 'confusion' 
@@ -24,11 +24,13 @@ export interface LootItem {
 }
 
 export interface BattleRewards {
+  id: string;
   xp: number;
   crystals: number;
   perfectBonus: boolean;
   streakBonus: number;
   loot?: LootItem[];
+  timestamp: number;
 }
 
 export interface DigraphQuestion {
@@ -76,6 +78,7 @@ export interface Chapter {
   isUnlocked: boolean;
   isCompleted: boolean;
   background: string;
+  ambientAudio: string;
 }
 
 export interface TaskResult {
@@ -156,6 +159,13 @@ export interface Decoration {
   unlockedAtRestorationLevel: number;
 }
 
+export interface ActivityEntry {
+  id: string;
+  type: 'npc_rescued' | 'reward_claimed' | 'decoration_placed' | 'battle_victory' | 'quest_complete' | 'level_up';
+  description: string;
+  timestamp: number;
+}
+
 export interface ProgressionState {
   level: number;
   xp: number;
@@ -167,6 +177,7 @@ export interface ProgressionState {
   restorationPoints: number;
   restorationLevel: number;
   decorations: Record<string, string>; // slot -> decorationId
+  recentActivities: ActivityEntry[];
 }
 
 export interface Quest {

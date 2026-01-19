@@ -1,18 +1,20 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState, BattlePhase } from '../types';
+import { AppState, BattlePhase, Chapter } from '../types';
 import { AUDIO_TRACKS } from '../constants';
 
 interface AudioEngineProps {
   view: AppState;
   battlePhase: BattlePhase;
   isMuted: boolean;
+  currentChapterId: string;
+  chapters: Chapter[];
 }
 
 const FADE_DURATION = 1500; // ms
 const MAX_VOLUME = 0.4;
 
-const AudioEngine: React.FC<AudioEngineProps> = ({ view, battlePhase, isMuted }) => {
+const AudioEngine: React.FC<AudioEngineProps> = ({ view, battlePhase, isMuted, currentChapterId, chapters }) => {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const nextAudioRef = useRef<HTMLAudioElement | null>(null);
   const fadeIntervalRef = useRef<number | null>(null);
@@ -26,13 +28,21 @@ const AudioEngine: React.FC<AudioEngineProps> = ({ view, battlePhase, isMuted })
       if (battlePhase === 'victory') targetTrack = AUDIO_TRACKS.victory;
       else if (battlePhase === 'defeat') targetTrack = AUDIO_TRACKS.defeat;
       else targetTrack = AUDIO_TRACKS.battle;
+    } else if (view === 'world-map') {
+      const chapter = chapters.find(c => c.id === currentChapterId);
+      if (chapter) {
+        targetTrack = chapter.ambientAudio;
+      }
+    } else {
+      // Default map theme for other sub-views like character sheet, etc.
+      targetTrack = AUDIO_TRACKS.map;
     }
 
     if (targetTrack !== currentTrack) {
       transitionTo(targetTrack);
       setCurrentTrack(targetTrack);
     }
-  }, [view, battlePhase]);
+  }, [view, battlePhase, currentChapterId, chapters]);
 
   // Handle Mute/Unmute
   useEffect(() => {

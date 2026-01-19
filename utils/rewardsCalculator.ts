@@ -1,7 +1,7 @@
 
 import { BattleState, BattleRewards, LootItem } from '../types';
+import { generateSmartId } from './rewardUtils';
 
-// Guardian-specific loot tables
 const GUARDIAN_LOOT_TABLES: Record<string, LootItem[]> = {
   'mumbler': [
     { id: 'whisper-dust', name: 'Whisper Dust', type: 'material', rarity: 'common', icon: '✨', description: 'Sparkling dust from the Mumbler\'s whispers' },
@@ -14,26 +14,20 @@ const GUARDIAN_LOOT_TABLES: Record<string, LootItem[]> = {
   ]
 };
 
-// Fix: Updated to accept unlockedNPCs array to apply bonuses like Eldrin's XP boost.
-// This resolves the "Expected 1 arguments, but got 2" error reported in App.tsx.
 export const calculateBattleRewards = (state: BattleState, unlockedNPCs: string[] = []): BattleRewards => {
   const baseXP = state.guardianMaxHealth / 2;
   const streakBonus = state.maxComboStreak * 10;
   const perfectBonus = state.perfectRounds === state.maxRounds;
   const perfectBonusAmount = perfectBonus ? 50 : 0;
   
-  // Calculate crystals (currency)
   const crystals = Math.floor((state.totalDamageDealt / 20) + (state.criticalHits * 5));
 
-  // Determine loot drops
   const lootDrops: LootItem[] = [];
-  const guardianKey = state.guardian.name.toLowerCase();
+  const guardianKey = state.guardian.id.toLowerCase();
   const guardianLoot = GUARDIAN_LOOT_TABLES[guardianKey] || GUARDIAN_LOOT_TABLES.default;
   
-  // Always drop at least one common item
   lootDrops.push(guardianLoot[0]);
   
-  // Chance for additional loot based on performance
   if (state.maxComboStreak >= 5) {
     const rareItem = guardianLoot.find(item => item.rarity === 'rare');
     if (rareItem) lootDrops.push({ ...rareItem });
@@ -46,16 +40,17 @@ export const calculateBattleRewards = (state: BattleState, unlockedNPCs: string[
 
   let finalXP = Math.floor(baseXP + streakBonus + perfectBonusAmount);
   
-  // Eldrin NPC Bonus (+10% XP)
   if (unlockedNPCs.includes('eldrin')) {
     finalXP = Math.floor(finalXP * 1.1);
   }
 
   return {
+    id: generateSmartId('battle-reward'),
     xp: finalXP,
     crystals,
     perfectBonus,
     streakBonus,
-    loot: lootDrops
+    loot: lootDrops,
+    timestamp: Date.now()
   };
 };

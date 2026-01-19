@@ -12,6 +12,29 @@ export const WORLD_LORE = {
   theGuardians: "Once the 'Five High Cantors' of the Academy, they were corrupted when they tried to hold onto the echoes of the stolen Syllable."
 };
 
+export const KINGDOM_ROADMAP = [
+  {
+    quarter: "Q1 2026",
+    focus: "The Living Echo",
+    deliverables: "Adaptive AI resonance, real-time difficulty tuning, enhanced assessment spells."
+  },
+  {
+    quarter: "Q2 2026",
+    focus: "The Weaver's Mirror",
+    deliverables: "Ledger 2.0 analytics, milestone celebrations, multi-child save profiles."
+  },
+  {
+    quarter: "Q3 2026",
+    focus: "Guild Alliances",
+    deliverables: "Teacher-Cantor tools, classroom rosters, regional leaderboard echoes."
+  },
+  {
+    quarter: "Q4 2026",
+    focus: "Astral Phonetics",
+    deliverables: "AR visualizers, collaborative raid battles, world language translations."
+  }
+];
+
 export const HERO_LORE = {
   name: "Caelum",
   title: "The Word Weaver",
@@ -37,7 +60,14 @@ export const AUDIO_TRACKS = {
   map: 'https://assets.mixkit.co/music/preview/mixkit-mystical-dream-578.mp3',
   battle: 'https://assets.mixkit.co/music/preview/mixkit-epic-hero-battle-627.mp3',
   victory: 'https://assets.mixkit.co/music/preview/mixkit-winning-elevation-1113.mp3',
-  defeat: 'https://assets.mixkit.co/music/preview/mixkit-sad-and-melancholy-311.mp3'
+  defeat: 'https://assets.mixkit.co/music/preview/mixkit-sad-and-melancholy-311.mp3',
+  ambiance: {
+    cove: 'https://assets.mixkit.co/sfx/preview/mixkit-crashing-ocean-waves-loop-1510.mp3',
+    valley: 'https://assets.mixkit.co/sfx/preview/mixkit-soft-wind-blowing-through-trees-loop-1144.mp3',
+    beach: 'https://assets.mixkit.co/sfx/preview/mixkit-tropical-island-beach-loop-1512.mp3',
+    den: 'https://assets.mixkit.co/sfx/preview/mixkit-horror-cavern-wind-loop-1153.mp3',
+    keep: 'https://assets.mixkit.co/music/preview/mixkit-ethereal-fairy-tale-story-603.mp3'
+  }
 };
 
 export const NPCS: NPC[] = [
@@ -94,6 +124,7 @@ export const CHAPTERS = [
     isUnlocked: true,
     isCompleted: false,
     background: 'https://images.unsplash.com/photo-1559128010-7c1ad6e1b6a5?auto=format&fit=crop&q=80&w=1200',
+    ambientAudio: AUDIO_TRACKS.ambiance.cove,
     guardian: {
       id: 'mumbler',
       name: 'The Mumbler',
@@ -112,6 +143,7 @@ export const CHAPTERS = [
     isUnlocked: false,
     isCompleted: false,
     background: 'https://images.unsplash.com/photo-1502082553048-f009c37129b9?auto=format&fit=crop&q=80&w=1200',
+    ambientAudio: AUDIO_TRACKS.ambiance.valley,
     guardian: {
       id: 'vortex',
       name: 'Vowel Vortex',
@@ -130,6 +162,7 @@ export const CHAPTERS = [
     isUnlocked: false,
     isCompleted: false,
     background: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&q=80&w=1200',
+    ambientAudio: AUDIO_TRACKS.ambiance.beach,
     guardian: {
       id: 'beast',
       name: 'The Blend Beast',
@@ -148,6 +181,7 @@ export const CHAPTERS = [
     isUnlocked: false,
     isCompleted: false,
     background: 'https://images.unsplash.com/photo-1519302959554-a75be0afc82a?auto=format&fit=crop&q=80&w=1200',
+    ambientAudio: AUDIO_TRACKS.ambiance.den,
     guardian: {
       id: 'dragon',
       name: 'Digraph Dragon',
@@ -166,6 +200,7 @@ export const CHAPTERS = [
     isUnlocked: false,
     isCompleted: false,
     background: 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?auto=format&fit=crop&q=80&w=1200',
+    ambientAudio: AUDIO_TRACKS.ambiance.keep,
     guardian: {
       id: 'king',
       name: 'The Silent King',

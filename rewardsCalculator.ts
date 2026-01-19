@@ -1,5 +1,6 @@
 
 import { BattleState, BattleRewards, LootItem, RootState } from './types';
+import { generateSmartId } from './utils/rewardUtils';
 
 const GUARDIAN_LOOT_TABLES: Record<string, LootItem[]> = {
   'mumbler': [
@@ -24,7 +25,7 @@ export const calculateBattleRewards = (state: BattleState, unlockedNPCs: string[
 
   // Determine loot drops
   const lootDrops: LootItem[] = [];
-  const guardianKey = state.guardian.name.toLowerCase();
+  const guardianKey = state.guardian.id.toLowerCase();
   const guardianLoot = GUARDIAN_LOOT_TABLES[guardianKey] || GUARDIAN_LOOT_TABLES.default;
   lootDrops.push(guardianLoot[0]);
   if (state.maxComboStreak >= 5) {
@@ -43,11 +44,14 @@ export const calculateBattleRewards = (state: BattleState, unlockedNPCs: string[
     finalXP = Math.floor(finalXP * 1.1);
   }
 
+  // Corrected: Return must match BattleRewards interface with id and timestamp.
   return {
+    id: generateSmartId('battle-reward'),
     xp: finalXP,
     crystals,
     perfectBonus,
     streakBonus,
-    loot: lootDrops
+    loot: lootDrops,
+    timestamp: Date.now()
   };
 };

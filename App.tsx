@@ -7,16 +7,18 @@ import CharacterSheet from './components/CharacterSheet';
 import Sanctuary from './components/Sanctuary';
 import HeroRoom from './components/HeroRoom';
 import QuestLog from './components/QuestLog';
+import KingdomLedger from './components/KingdomLedger';
 import VictoryScreen from './components/battle/VictoryScreen';
 import DefeatScreen from './components/battle/DefeatScreen';
 import AudioEngine from './components/AudioEngine';
-import { RootState, BattleState, AnimationState, PhonicsTask, AppState, Chapter, Attributes, Quest } from './types';
+import { RootState, BattleState, AnimationState, PhonicsTask, AppState, Chapter, Attributes, Quest, ActivityEntry } from './types';
 import { BattleEngine } from './battleEngine';
 import { fetchQuestions, getNarrativeFeedback, generateSpeech } from './services/geminiService';
-import { playTTS } from './utils/audioUtils';
-import { CHAPTERS, NPCS } from './constants';
+import { playTTS, resumeAudioContext } from './utils/audioUtils';
+import { CHAPTERS, NPCS, ASSETS } from './constants';
 import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
 import { calculateBattleRewards } from './utils/rewardsCalculator';
+import { generateSmartId } from './utils/rewardUtils';
 
 const SAVE_KEY = 'phonics_quest_save_v2';
 const AUDIO_MUTE_KEY = 'phonics_quest_audio_mute';
@@ -37,8 +39,10 @@ type Action =
   | { type: 'UPDATE_QUEST_PROGRESS'; questId: string; amount: number }
   | { type: 'CLAIM_QUEST_REWARD'; questId: string }
   | { type: 'USE_POWERUP'; powerupType: keyof BattleState['availablePowerups'] }
+  | { type: 'LOG_ACTIVITY'; log: Omit<ActivityEntry, 'id' | 'timestamp'> }
   | { type: 'RESET_GAME' }
-  | { type: 'LOAD_SAVE'; savedState: Partial<RootState> };
+  | { type: 'LOAD_SAVE'; savedState: Partial<RootState> }
+  | { type: 'SELECT_CHAPTER'; chapterId: string };
 
 const initialState: RootState = {
   view: 'world-map',
@@ -53,7 +57,8 @@ const initialState: RootState = {
     unlockedNPCs: [],
     restorationPoints: 0,
     restorationLevel: 0,
-    decorations: {}
+    decorations: {},
+    recentActivities: []
   },
   quests: { 
     activeQuests: [
@@ -85,18 +90,28 @@ function rootReducer(state: RootState, action: Action): RootState {
       return { ...state, battle: { ...state.battle, feedback: action.text } };
     case 'SET_VIEW':
       return { ...state, view: action.view };
+    case 'SELECT_CHAPTER':
+      return { ...state, currentChapterId: action.chapterId };
     case 'ADD_XP': {
       let newXp = state.progression.xp + action.amount;
       let newLevel = state.progression.level;
       let newMaxXp = state.progression.maxXp;
+      const logs = [...state.progression.recentActivities];
+      
       while (newXp >= newMaxXp) {
         newLevel++;
         newXp -= newMaxXp;
         newMaxXp = Math.floor(newMaxXp * 1.5);
+        logs.push({
+          id: generateSmartId('level-up'),
+          type: 'level_up',
+          description: `Ascended to Power Level ${newLevel}!`,
+          timestamp: Date.now()
+        });
       }
       return {
         ...state,
-        progression: { ...state.progression, xp: newXp, level: newLevel, maxXp: newMaxXp }
+        progression: { ...state.progression, xp: newXp, level: newLevel, maxXp: newMaxXp, recentActivities: logs.slice(-20) }
       };
     }
     case 'ADD_CRYSTALS': {
@@ -114,6 +129,7 @@ function rootReducer(state: RootState, action: Action): RootState {
       const chapterIdx = state.chapters.findIndex(c => c.id === action.chapterId);
       const nextChapterIdx = chapterIdx + 1;
       const newChapters = [...state.chapters];
+      const ch = newChapters[chapterIdx];
       newChapters[chapterIdx] = { ...newChapters[chapterIdx], isCompleted: true };
       if (nextChapterIdx < newChapters.length) {
         newChapters[nextChapterIdx] = { ...newChapters[nextChapterIdx], isUnlocked: true };
@@ -123,6 +139,22 @@ function rootReducer(state: RootState, action: Action): RootState {
       const newUnlockedNPCs = newNPC && !state.progression.unlockedNPCs.includes(newNPC.id)
         ? [...state.progression.unlockedNPCs, newNPC.id]
         : state.progression.unlockedNPCs;
+
+      const logs = [...state.progression.recentActivities];
+      logs.push({
+        id: generateSmartId('chapter-victory'),
+        type: 'battle_victory',
+        description: `Echo of ${ch.name} restored by defeating ${ch.guardian.name}.`,
+        timestamp: Date.now()
+      });
+      if (newNPC && !state.progression.unlockedNPCs.includes(newNPC.id)) {
+        logs.push({
+          id: generateSmartId('npc-rescue'),
+          type: 'npc_rescued',
+          description: `Rescued ${newNPC.name} from the shadows of ${ch.name}.`,
+          timestamp: Date.now()
+        });
+      }
 
       const newQuests = { ...state.quests };
       if (action.chapterId === 'ch1') {
@@ -136,7 +168,8 @@ function rootReducer(state: RootState, action: Action): RootState {
         progression: { 
           ...state.progression, 
           unlockedNPCs: newUnlockedNPCs,
-          restorationPoints: state.progression.restorationPoints + 100 
+          restorationPoints: state.progression.restorationPoints + 100,
+          recentActivities: logs.slice(-20)
         }
       };
     }
@@ -157,23 +190,44 @@ function rootReducer(state: RootState, action: Action): RootState {
         ...state,
         progression: { ...state.progression, restorationPoints: state.progression.restorationPoints + action.amount }
       };
-    case 'CLAIM_RESTORATION_REWARD':
+    case 'CLAIM_RESTORATION_REWARD': {
+      const logs = [...state.progression.recentActivities];
+      logs.push({
+        id: generateSmartId('restoration-reward'),
+        type: 'reward_claimed',
+        description: `Claimed a Restoration Cache for Kingdom Level ${state.progression.restorationLevel + 1}!`,
+        timestamp: Date.now()
+      });
       return {
         ...state,
         progression: { 
           ...state.progression, 
           restorationPoints: 0, 
-          restorationLevel: state.progression.restorationLevel + 1 
+          restorationLevel: state.progression.restorationLevel + 1,
+          recentActivities: logs.slice(-20)
         }
       };
-    case 'EQUIP_DECORATION':
+    }
+    case 'EQUIP_DECORATION': {
+      const logs = [...state.progression.recentActivities];
+      const deco = state.progression.decorations[action.slot];
+      if (deco !== action.decorationId) {
+        logs.push({
+          id: generateSmartId('deco-placed'),
+          type: 'decoration_placed',
+          description: `Placed a new decoration in the Hero's Room.`,
+          timestamp: Date.now()
+        });
+      }
       return {
         ...state,
         progression: { 
           ...state.progression, 
-          decorations: { ...state.progression.decorations, [action.slot]: action.decorationId } 
+          decorations: { ...state.progression.decorations, [action.slot]: action.decorationId },
+          recentActivities: logs.slice(-20)
         }
       };
+    }
     case 'UPDATE_QUEST_PROGRESS': {
       const newQuests = { ...state.quests };
       newQuests.activeQuests = newQuests.activeQuests.map(q => 
@@ -188,16 +242,35 @@ function rootReducer(state: RootState, action: Action): RootState {
       newQuests.activeQuests = newQuests.activeQuests.map(q => 
         q.id === action.questId ? { ...q, isComplete: true } : q
       );
+      const logs = [...state.progression.recentActivities];
+      logs.push({
+        id: generateSmartId('quest-reward'),
+        type: 'quest_complete',
+        description: `Completed Trial: ${quest.title}`,
+        timestamp: Date.now()
+      });
       return {
         ...state,
         quests: newQuests,
         progression: { 
           ...state.progression, 
           xp: state.progression.xp + quest.rewardXp,
-          restorationPoints: state.progression.restorationPoints + 15
+          restorationPoints: state.progression.restorationPoints + 15,
+          recentActivities: logs.slice(-20)
         }
       };
     }
+    case 'LOG_ACTIVITY':
+      return {
+        ...state,
+        progression: {
+          ...state.progression,
+          recentActivities: [
+            ...state.progression.recentActivities,
+            { ...action.log, id: generateSmartId(action.log.type), timestamp: Date.now() }
+          ].slice(-20)
+        }
+      };
     case 'RESET_GAME':
       localStorage.removeItem(SAVE_KEY);
       return { ...initialState };
@@ -219,6 +292,7 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isMuted, setIsMuted] = useState(() => localStorage.getItem(AUDIO_MUTE_KEY) === 'true');
+  const [isStarted, setIsStarted] = useState(false);
   const liveSessionRef = useRef<any>(null);
   const lastAudioPlayedRef = useRef<string | null>(null);
 
@@ -239,14 +313,13 @@ const App: React.FC = () => {
 
   useEffect(() => { localStorage.setItem(AUDIO_MUTE_KEY, String(isMuted)); }, [isMuted]);
 
-  // Effect to automatically play speech when it is dispatched to the state
   useEffect(() => {
     const audio = state.battle.audioFeedback;
-    if (audio && audio !== lastAudioPlayedRef.current && !isMuted) {
+    if (isStarted && audio && audio !== lastAudioPlayedRef.current && !isMuted) {
       playTTS(audio);
       lastAudioPlayedRef.current = audio;
     }
-  }, [state.battle.audioFeedback, isMuted]);
+  }, [state.battle.audioFeedback, isMuted, isStarted]);
 
   const mappedGameState = useMemo(() => ({
     playerHP: state.battle.playerHealth,
@@ -261,6 +334,11 @@ const App: React.FC = () => {
     isCritical: state.battle.taskResults[state.battle.taskResults.length - 1]?.criticalHit || false,
   }), [state.battle, state.progression.level]);
 
+  const startGame = async () => {
+    await resumeAudioContext();
+    setIsStarted(true);
+  };
+
   const speak = async (text: string) => {
     const audioData = await generateSpeech(text);
     if (audioData) playTTS(audioData);
@@ -272,7 +350,6 @@ const App: React.FC = () => {
       dispatch({ type: 'ADD_CRYSTALS', amount: rewards.crystals });
       dispatch({ type: 'COMPLETE_CHAPTER', chapterId: state.currentChapterId });
       
-      // Check quest: Focused Echoes
       if (state.battle.maxComboStreak >= 5) {
         dispatch({ type: 'UPDATE_QUEST_PROGRESS', questId: 'q2', amount: 1 });
         dispatch({ type: 'ADD_RESTORATION_POINTS', amount: 5 });
@@ -286,12 +363,9 @@ const App: React.FC = () => {
     const currentTask = state.battle.tasks[state.battle.currentTaskIndex];
     const isCorrect = selected.toLowerCase() === currentTask.correctDigraph.toLowerCase();
     
-    // Process core battle logic first
     const { nextState } = BattleEngine.processTurn(state.battle, isCorrect, state.progression.attributes);
     
-    // Fetch dynamic AI feedback and speech
     getNarrativeFeedback(isCorrect, currentTask.word, nextState.comboStreak).then((aiFeedback) => {
-      // Dispatch an action to update feedback text and play generated speech via side-effect
       dispatch({ 
         type: 'UPDATE_BATTLE', 
         state: { 
@@ -345,7 +419,10 @@ const App: React.FC = () => {
               const input = e.inputBuffer.getChannelData(0);
               const int16 = new Int16Array(input.length);
               for (let i = 0; i < input.length; i++) int16[i] = input[i] * 32768;
-              const base64 = btoa(String.fromCharCode(...new Uint8Array(int16.buffer)));
+              const bytes = new Uint8Array(int16.buffer);
+              let binary = '';
+              for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i]);
+              const base64 = btoa(binary);
               sessionPromise.then(s => s.sendRealtimeInput({ media: { data: base64, mimeType: 'audio/pcm;rate=16000' } }));
             };
             source.connect(processor);
@@ -388,64 +465,101 @@ const App: React.FC = () => {
     } catch (e) { console.error(e); } finally { setLoading(false); }
   };
 
+  const handleChapterSelect = (chapterId: string) => {
+    dispatch({ type: 'SELECT_CHAPTER', chapterId });
+  };
+
   const currentChapter = state.chapters.find(c => c.id === state.currentChapterId) || state.chapters[0];
 
   return (
     <div className="relative mx-auto max-w-[430px] h-screen max-h-[932px] overflow-hidden flex flex-col shadow-2xl border-x border-white/5 bg-background-dark">
-      <AudioEngine view={state.view} battlePhase={state.battle.phase} isMuted={isMuted} />
-      <HUD gameState={mappedGameState} battleState={state.battle} onReset={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} isMuted={isMuted} onToggleMute={() => setIsMuted(!isMuted)} />
-      
-      <div className="flex-1 relative overflow-hidden">
-        {state.view === 'world-map' && (
-          <div className="absolute inset-0 z-40 bg-background-dark p-6 overflow-y-auto pb-24">
-            <header className="mb-6">
-              <h1 className="text-3xl font-black text-white tracking-tighter italic uppercase">Kingdom Map</h1>
-              <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Select an island to reclaim</p>
-            </header>
-            <div className="space-y-4">
-              {state.chapters.map((ch) => (
-                <div key={ch.id} onClick={() => ch.isUnlocked && startChapter(ch)} className={`relative overflow-hidden rounded-2xl border transition-all ${ch.isUnlocked ? 'border-white/10 hover:border-primary cursor-pointer' : 'border-white/5 opacity-50 grayscale'}`}>
-                  <div className="absolute inset-0 z-0">
-                    <img src={ch.background} className="w-full h-full object-cover opacity-30" alt={ch.name} />
-                    <div className="absolute inset-0 bg-gradient-to-r from-background-dark via-background-dark/80 to-transparent"></div>
-                  </div>
-                  <div className="relative z-10 p-6 flex items-center justify-between">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-[10px] font-black text-primary tracking-[0.2em] uppercase">{ch.guardian.island}</span>
-                      <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">{ch.name}</h3>
-                    </div>
-                    <span className="material-symbols-outlined text-white/40">{ch.isUnlocked ? 'arrow_forward_ios' : 'lock'}</span>
-                  </div>
-                </div>
-              ))}
+      {!isStarted && (
+        <div className="absolute inset-0 z-[200] bg-background-dark flex flex-col items-center justify-center p-8 text-center animate-fadeIn">
+          <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&q=80&w=1200')] bg-cover bg-center"></div>
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="w-32 h-32 mb-8 bg-primary/20 rounded-full flex items-center justify-center border border-primary/40 animate-pulse">
+               <span className="material-symbols-outlined text-primary text-6xl">auto_awesome</span>
             </div>
+            <h1 className="text-4xl font-black text-white italic uppercase tracking-tighter mb-2 drop-shadow-[0_0_15px_#0ddff2]">Phonics Quest</h1>
+            <p className="text-primary font-bold text-[10px] uppercase tracking-[0.4em] mb-12">Crystal Chronicles</p>
+            
+            <p className="text-white/60 text-xs italic mb-12 max-w-[280px]">The Kingdom has fallen silent. Only your resonance can restore the music of words.</p>
+            
+            <button 
+              onClick={startGame}
+              className="px-12 py-5 bg-primary text-background-dark rounded-2xl font-black uppercase tracking-widest text-sm shadow-[0_0_40px_rgba(13,223,242,0.4)] active:scale-95 transition-all hover:brightness-110"
+            >
+              Awaken the Kingdom
+            </button>
+            <p className="mt-6 text-[8px] font-black text-white/20 uppercase tracking-widest italic">User gesture required for audio activation</p>
           </div>
-        )}
+        </div>
+      )}
 
-        {state.view === 'battle' && (
-          <>
-            <Arena gameState={mappedGameState} animationState={animationState} />
-            {state.battle.phase === 'victory' && <VictoryScreen guardianName={currentChapter.guardian.name} rewards={calculateBattleRewards(state.battle, state.progression.unlockedNPCs)} progression={state.progression} onComplete={() => handleBattleEnd(true, calculateBattleRewards(state.battle, state.progression.unlockedNPCs))} />}
-            {state.battle.phase === 'defeat' && <DefeatScreen guardianName={currentChapter.guardian.name} tasksCompleted={state.battle.currentTaskIndex} totalTasks={state.battle.tasks.length} comboStreak={state.battle.maxComboStreak} onRetry={() => startChapter(currentChapter)} onReturnToMap={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} />}
-            {state.battle.phase !== 'victory' && state.battle.phase !== 'defeat' && <Overlay gameState={mappedGameState} rootState={state} onSelect={handleSelect} onBattleEnd={handleBattleEnd} onPronounce={() => speak(mappedGameState.currentQuestion?.word || "")} onVoiceStart={startVoiceRecognition} onUsePowerup={(type) => dispatch({ type: 'USE_POWERUP', powerupType: type })} isListening={isListening} />}
-          </>
-        )}
+      {isStarted && (
+        <>
+          <AudioEngine view={state.view} battlePhase={state.battle.phase} isMuted={isMuted} currentChapterId={state.currentChapterId} chapters={state.chapters} />
+          <HUD gameState={mappedGameState} battleState={state.battle} onReset={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} isMuted={isMuted} onToggleMute={() => setIsMuted(!isMuted)} />
+          
+          <div className="flex-1 relative overflow-hidden">
+            {state.view === 'world-map' && (
+              <div className="absolute inset-0 z-40 bg-background-dark p-6 overflow-y-auto pb-24 custom-scrollbar">
+                <header className="mb-6">
+                  <h1 className="text-3xl font-black text-white tracking-tighter italic uppercase">Kingdom Map</h1>
+                  <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Select an island to reclaim</p>
+                </header>
+                <div className="space-y-4">
+                  {state.chapters.map((ch) => (
+                    <div 
+                      key={ch.id} 
+                      onMouseEnter={() => handleChapterSelect(ch.id)}
+                      onClick={() => ch.isUnlocked && startChapter(ch)} 
+                      className={`relative overflow-hidden rounded-2xl border transition-all ${state.currentChapterId === ch.id ? 'border-primary ring-1 ring-primary/40' : 'border-white/10'} ${ch.isUnlocked ? 'hover:border-primary cursor-pointer' : 'border-white/5 opacity-50 grayscale'}`}
+                    >
+                      <div className="absolute inset-0 z-0">
+                        <img src={ch.background} className="w-full h-full object-cover opacity-30" alt={ch.name} />
+                        <div className="absolute inset-0 bg-gradient-to-r from-background-dark via-background-dark/80 to-transparent"></div>
+                      </div>
+                      <div className="relative z-10 p-6 flex items-center justify-between">
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] font-black text-primary tracking-[0.2em] uppercase">{ch.guardian.island}</span>
+                          <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">{ch.name}</h3>
+                        </div>
+                        <span className="material-symbols-outlined text-white/40">{ch.isUnlocked ? 'arrow_forward_ios' : 'lock'}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-        {state.view === 'character-sheet' && <CharacterSheet progression={state.progression} onUpgrade={(attr, cost) => dispatch({ type: 'UPGRADE_ATTRIBUTE', attribute: attr, cost })} onResetProgress={() => confirm("Reset progress?") && dispatch({ type: 'RESET_GAME' })} />}
-        {state.view === 'sanctuary' && <Sanctuary progression={state.progression} onClaimReward={() => dispatch({ type: 'CLAIM_RESTORATION_REWARD' })} />}
-        {state.view === 'hero-room' && <HeroRoom progression={state.progression} onEquipDecoration={(slot, id) => dispatch({ type: 'EQUIP_DECORATION', slot, decorationId: id })} />}
-        {state.view === 'quest-log' && <QuestLog quests={state.quests} onClaimQuestReward={(id) => dispatch({ type: 'CLAIM_QUEST_REWARD', questId: id })} />}
-      </div>
+            {state.view === 'battle' && (
+              <>
+                <Arena gameState={mappedGameState} animationState={animationState} />
+                {state.battle.phase === 'victory' && <VictoryScreen guardianName={currentChapter.guardian.name} rewards={calculateBattleRewards(state.battle, state.progression.unlockedNPCs)} progression={state.progression} onComplete={() => handleBattleEnd(true, calculateBattleRewards(state.battle, state.progression.unlockedNPCs))} />}
+                {state.battle.phase === 'defeat' && <DefeatScreen guardianName={currentChapter.guardian.name} tasksCompleted={state.battle.currentTaskIndex} totalTasks={state.battle.tasks.length} comboStreak={state.battle.maxComboStreak} onRetry={() => startChapter(currentChapter)} onReturnToMap={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} />}
+                {state.battle.phase !== 'victory' && state.battle.phase !== 'defeat' && <Overlay gameState={mappedGameState} rootState={state} onSelect={handleSelect} onBattleEnd={handleBattleEnd} onPronounce={() => speak(mappedGameState.currentQuestion?.word || "")} onVoiceStart={startVoiceRecognition} onUsePowerup={(type) => dispatch({ type: 'USE_POWERUP', powerupType: type })} isListening={isListening} />}
+              </>
+            )}
 
-      <div className="relative z-50 h-16 bg-background-dark/95 border-t border-white/5 flex items-center justify-around px-4">
-        <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} className={`material-symbols-outlined ${state.view === 'world-map' ? 'text-primary' : 'text-white/40'}`}>map</button>
-        <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'sanctuary' })} className={`material-symbols-outlined ${state.view === 'sanctuary' ? 'text-primary' : 'text-white/40'}`}>castle</button>
-        <div onClick={() => state.view !== 'battle' && startChapter(currentChapter)} className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center -translate-y-4 border border-primary/40 shadow-lg cursor-pointer animate-pulse"><span className="material-symbols-outlined text-primary">swords</span></div>
-        <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'quest-log' })} className={`material-symbols-outlined ${state.view === 'quest-log' ? 'text-primary' : 'text-white/40'}`}>assignment</button>
-        <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'character-sheet' })} className={`material-symbols-outlined ${state.view === 'character-sheet' ? 'text-primary' : 'text-white/40'}`}>person</button>
-      </div>
+            {state.view === 'character-sheet' && <CharacterSheet progression={state.progression} onUpgrade={(attr, cost) => dispatch({ type: 'UPGRADE_ATTRIBUTE', attribute: attr, cost })} onResetProgress={() => confirm("Reset progress?") && dispatch({ type: 'RESET_GAME' })} />}
+            {state.view === 'sanctuary' && <Sanctuary progression={state.progression} onClaimReward={() => dispatch({ type: 'CLAIM_RESTORATION_REWARD' })} onViewLedger={() => dispatch({ type: 'SET_VIEW', view: 'ledger' })} />}
+            {state.view === 'hero-room' && <HeroRoom progression={state.progression} onEquipDecoration={(slot, id) => dispatch({ type: 'EQUIP_DECORATION', slot, decorationId: id })} />}
+            {state.view === 'quest-log' && <QuestLog quests={state.quests} onClaimQuestReward={(id) => dispatch({ type: 'CLAIM_QUEST_REWARD', questId: id })} />}
+            {state.view === 'ledger' && <KingdomLedger progression={state.progression} onClose={() => dispatch({ type: 'SET_VIEW', view: 'sanctuary' })} />}
+          </div>
 
-      {loading && <div className="absolute inset-0 z-[100] bg-background-dark/90 backdrop-blur-md flex flex-col items-center justify-center gap-4"><div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div><p className="text-primary font-black animate-pulse uppercase tracking-[0.3em] text-[10px]">Tuning Echoes...</p></div>}
+          <div className="relative z-50 h-16 bg-background-dark/95 border-t border-white/5 flex items-center justify-around px-4">
+            <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'world-map' })} className={`material-symbols-outlined transition-colors ${state.view === 'world-map' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>map</button>
+            <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'sanctuary' })} className={`material-symbols-outlined transition-colors ${state.view === 'sanctuary' || state.view === 'ledger' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>castle</button>
+            <div onClick={() => state.view !== 'battle' && startChapter(currentChapter)} className="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center -translate-y-4 border border-primary/40 shadow-lg cursor-pointer animate-pulse hover:bg-primary/30 transition-all"><span className="material-symbols-outlined text-primary">swords</span></div>
+            <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'quest-log' })} className={`material-symbols-outlined transition-colors ${state.view === 'quest-log' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>assignment</button>
+            <button onClick={() => dispatch({ type: 'SET_VIEW', view: 'character-sheet' })} className={`material-symbols-outlined transition-colors ${state.view === 'character-sheet' ? 'text-primary' : 'text-white/40 hover:text-white/60'}`}>person</button>
+          </div>
+
+          {loading && <div className="absolute inset-0 z-[100] bg-background-dark/90 backdrop-blur-md flex flex-col items-center justify-center gap-4"><div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div><p className="text-primary font-black animate-pulse uppercase tracking-[0.3em] text-[10px]">Tuning Echoes...</p></div>}
+        </>
+      )}
     </div>
   );
 };
